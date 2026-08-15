@@ -14,6 +14,11 @@ npm install
 cd ios && bundle install && bundle exec pod install && cd ..
 ```
 
+**OS untuk development:**
+
+- **Android**: bisa dikembangkan di Linux, macOS, maupun Windows. Pastikan Android SDK/Android Studio & Java sudah terpasang (lihat [set up your environment](https://reactnative.dev/docs/set-up-your-environment) untuk distro/OS masing-masing). Di Linux, device fisik lewat USB umumnya butuh [udev rules](https://developer.android.com/studio/run/device#setting-up) supaya terbaca oleh `adb`.
+- **iOS**: hanya bisa dibangun/dijalankan di **macOS** (butuh Xcode + CocoaPods) — tidak bisa dari Linux atau Windows.
+
 ---
 
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
