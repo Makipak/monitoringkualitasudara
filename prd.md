@@ -43,7 +43,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 ### 5.1 Perangkat IoT
 | ID | Requirement |
 |----|-------------|
-| FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (PMS5003, SCD30, SGP30, MiCS-4514, BH1750, MAX9814). |
+| FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (SDS011, MH-Z19B, SGP30, MiCS-4514, BH1750, MAX9814). |
 | FR-D2 | Perangkat menampilkan nilai seluruh parameter di layar OLED/TFT. |
 | FR-D3 | Perangkat menyalakan LED merah ketika satu atau lebih parameter melebihi/di bawah batas normal. |
 | FR-D4 | Perangkat mengirim data sensor ke MQTT broker secara berkala melalui koneksi internet. |

@@ -105,7 +105,7 @@ CREATE INDEX idx_sensor_readings_time
   ON sensor_readings (time DESC);
 ```
 
-Satuan di atas (ppm/ppb/µg/m3) mengikuti satuan umum tiap sensor — perlu dicek ulang terhadap datasheet masing-masing sensor (PMS5003, SCD30, SGP30, MiCS-4514) saat implementasi agar konsisten dengan output aktualnya.
+Satuan di atas (ppm/ppb/µg/m3) mengikuti satuan umum tiap sensor — perlu dicek ulang terhadap datasheet masing-masing sensor (SDS011, MH-Z19B, SGP30, MiCS-4514) saat implementasi agar konsisten dengan output aktualnya.
 
 ### 3.4 `thresholds`
 

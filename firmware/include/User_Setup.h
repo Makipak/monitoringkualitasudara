@@ -1,25 +1,36 @@
-// Custom TFT_eSPI setup for the ILI9341 2.8" SPI display, injected via
-// PlatformIO build_flags (`-D USER_SETUP_LOADED=1 -include
+// Custom TFT_eSPI setup for the ST7796 4.0" 480x320 SPI display, injected
+// via PlatformIO build_flags (`-D USER_SETUP_LOADED=1 -include
 // include/User_Setup.h`, see platformio.ini) instead of editing
 // TFT_eSPI's own bundled User_Setup.h inside the library folder — keeps
 // display config in this repo instead of a file PlatformIO would
 // otherwise overwrite on every `pio lib update`.
 //
+// Replaces the originally planned ILI9341 2.8" — see architecture.md 2.1
+// note "Catatan pemilihan display" for the reasoning (bigger + cheaper
+// than the Nextion alternative, same TFT_eSPI library/workflow).
+//
 // Pin values here MUST match include/config.h (PIN_TFT_*) — no single
 // source of truth is possible because TFT_eSPI reads these as
-// preprocessor macros, not runtime constants.
+// preprocessor macros, not runtime constants. This is a custom GPIO
+// mapping, not the ESP32's native VSPI pins.
 
-#define ILI9341_DRIVER
+#define ST7796_DRIVER
+#define TFT_WIDTH 320
+#define TFT_HEIGHT 480
 
-#define TFT_MISO 19
-#define TFT_MOSI 23
-#define TFT_SCLK 18
-#define TFT_CS 5   // matches config.h PIN_TFT_CS
-#define TFT_DC 2   // matches config.h PIN_TFT_DC
-#define TFT_RST 4  // matches config.h PIN_TFT_RST
+#define TFT_MOSI 15 // matches config.h PIN_TFT_MOSI
+#define TFT_MISO 4  // matches config.h PIN_TFT_MISO
+#define TFT_SCLK 2  // matches config.h PIN_TFT_SCLK
+#define TFT_CS 23   // matches config.h PIN_TFT_CS
+#define TFT_DC 18   // matches config.h PIN_TFT_DC
+#define TFT_RST 19  // matches config.h PIN_TFT_RST
 
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4
 
-#define SPI_FREQUENCY 40000000
+// Custom (non-native-VSPI) pin mapping via the GPIO matrix caps usable
+// SPI clock lower than native hardware SPI pins would allow — 27MHz is a
+// conservative starting point for ST7796 over remapped pins; raise if
+// stable on your actual wiring, lower if you see display glitches.
+#define SPI_FREQUENCY 27000000

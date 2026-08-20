@@ -10,8 +10,8 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 │                  │        │                    │        │                        │        │                  │
 │  ESP32 WROOM-32D │ MQTT   │  HiveMQ Cloud      │ MQTT   │  Node.js (Express/     │ REST/  │  React Native    │
 │  + 6 sensor      │ ─────> │  (managed broker,  │ ─────> │  Fastify)              │ WS     │  App             │
-│  + TFT + LED     │  TLS   │  TLS 8883)         │        │  + PostgreSQL          │ ─────> │                  │
-│                  │        │                    │        │  (Supabase)            │        │                  │
+│  + TFT 4.0"      │  TLS   │  TLS 8883)         │        │  + PostgreSQL          │ ─────> │                  │
+│  + LED           │        │                    │        │  (Supabase)            │        │                  │
 └─────────────────┘        └──────────────────┘        └───────────────────────┘        └──────────────────┘
 ```
 
@@ -21,15 +21,39 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 
 ### 2.1 Komponen
 - MCU: ESP32 DevKitC V4 WROOM-32D
-- Sensor: PMS5003 (UART), SCD30 (I2C), GY-SGP30 (I2C), MiCS-4514 (I2C), BH1750 (I2C), MAX9814 (ADC)
-- Display: ILI9341 2.8" TFT SPI (TFT_eSPI)
+- Sensor: SDS011 (UART1, PM2.5/PM10), MH-Z19B (UART2, CO2), GY-SGP30 (I2C), MiCS-4514 (I2C), BH1750 (I2C), MAX9814 (ADC), GY-SHT31 (I2C, suhu ruangan)
+- Display: **TFT SPI 4.0" driver ST7796, 480x320px** (`TFT_eSPI`) — menggantikan rencana Nextion (UART + software editor terpisah) maupun rencana awal ILI9341 2.8" (dianggap terlalu kecil oleh dosen pembimbing).
 - Indikator: 10x LED merah 5mm
 
 ### 2.2 Tanggung Jawab
 - Membaca seluruh sensor pada interval tetap.
-- Menampilkan nilai di TFT.
+- Menampilkan nilai di TFT langsung lewat kode (fungsi gambar teks/angka per parameter menggunakan `TFT_eSPI`, tidak ada software desain UI terpisah).
 - Mengevaluasi threshold lokal (rule sederhana) untuk menyalakan LED merah secara instan — ini berjalan independen dari koneksi internet, supaya indikator visual tetap berfungsi walau device sedang offline dari broker.
 - Publish data ke topic MQTT saat koneksi tersedia.
+
+**Catatan pemilihan display (ST7796 4.0", bukan Nextion):**
+- **Alasan:** proyek ini memprioritaskan kesederhanaan alur kerja (satu bahasa/tool, langsung coding, tanpa software editor tambahan seperti Nextion Editor) dibanding kemudahan desain visual drag-and-drop.
+- **Interface:** SPI, sama seperti rencana ILI9341 awal — pin dialokasikan sama seperti sebelumnya (MOSI, MISO, SCK, CS, DC, RST di jalur VSPI GPIO 15/4/2/23/18/19).
+- **Library:** tetap `TFT_eSPI`, hanya konfigurasi driver di `User_Setup.h` yang diganti dari `ILI9341_DRIVER` menjadi `ST7796_DRIVER` — tidak perlu belajar library/tool baru.
+- **Ukuran & resolusi:** 4.0" (480x320px, perlu dikonfirmasi ulang ke seller karena ada ketidaksesuaian info produk antara 480x320 dan 320x240 di listing pembelian), signifikan lebih besar dari ILI9341 2.8" sebelumnya, dan jauh lebih murah dibanding opsi Nextion (~Rp360.000 vs jutaan rupiah untuk Nextion) — perlu diupdate manual di `projek.xlsx` (BOM).
+- Opsi lain yang sempat dipertimbangkan dan tidak dipilih: Nextion Basic/Enhanced/Intelligent Series (perlu software Nextion Editor terpisah dan MCU display sendiri), ESP32 LVGL Smart Display all-in-one (kompleksitas GPIO/processing lebih tinggi, dokumentasi generic/clone kurang jelas), TJC (varian pasar China dari Nextion, dokumentasi kurang lengkap untuk pasar global), ILI9488 3.5" (alternatif SPI TFT lain di kelas ukuran serupa).
+
+**Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu ditampilkan di layar TFT sebagai info pendukung saja — tidak dikirim ke MQTT, tidak disimpan ke database, dan tidak masuk evaluasi threshold/alert seperti 7 parameter resmi lainnya. Jika ke depan suhu perlu jadi parameter resmi dengan alert, update `prd.md`/`schema.md`.
+
+**Catatan penggantian sensor CO2 (MH-Z19B, bukan SCD30):**
+- **Alasan:** sama seperti SDS011 — SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai tenggat waktu proyek. MH-Z19B dipilih karena ready stock dan umum ditemukan di marketplace lokal.
+- **Interface:** berubah dari I2C (SCD30) menjadi **UART** (MH-Z19B). Dialokasikan ke **UART2** ESP32 — sebelumnya dialokasikan untuk Nextion (sudah tidak dipakai setelah keputusan pindah ke TFT SPI), sehingga tidak ada konflik alokasi UART. UART1 tetap untuk SDS011, UART0 tetap untuk programming/debug.
+- **Konsekuensi kehilangan output suhu/RH bawaan SCD30:** tidak berdampak, karena suhu ruangan sudah ditangani terpisah oleh GY-SHT31 (lihat catatan di atas), dan RH (kelembapan) belum menjadi parameter resmi di `prd.md`/`schema.md` — jika ke depan RH dibutuhkan sebagai parameter resmi, perlu sensor humidity terpisah atau memanfaatkan output RH dari GY-SHT31 yang juga menyediakan itu.
+- **Output:** CO2 dalam ppm, range umum 0-5000 ppm — sesuai kebutuhan monitoring ruangan.
+- **Library:** kandidat `MHZ19` (Arduino), cek status maintenance sesuai `rule.md` sebelum dipakai.
+- **Biaya:** perlu diupdate manual di `projek.xlsx` (BOM), termasuk penghapusan SCD30 dari daftar.
+
+**Catatan penggantian sensor PM2.5/PM10 (SDS011, bukan PMS5003):**
+- **Alasan:** PMS5003 dan SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai dengan tenggat waktu proyek. SDS011 dipilih sebagai pengganti PM2.5/PM10 karena tersedia ready stock.
+- **Interface:** tetap UART, tidak mengubah alokasi pin (tetap UART1 ESP32, sama seperti rencana PMS5003 sebelumnya).
+- **Output:** sama seperti PMS5003 — PM2.5 dan PM10 (µg/m3), measuring range 0.0-999.9 µg/m3.
+- **Perbedaan teknis dari PMS5003:** format paket data UART berbeda dari PMS5003, memerlukan library parsing khusus (kandidat: `SdsDustSensor`, cek status maintenance sesuai `rule.md` sebelum dipakai). SDS011 memiliki kipas internal dengan estimasi umur laser diode ~8.000 jam operasi kontinu — perlu dicatat sebagai keterbatasan alat jika relevan di laporan.
+- **Biaya:** lebih mahal dari PMS5003 (~Rp668.000) — perlu diupdate manual di `projek.xlsx` (BOM).
 
 ### 2.3 Format Payload (usulan awal, detail final di schema.md)
 

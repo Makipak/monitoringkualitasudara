@@ -37,7 +37,7 @@ Dokumen ini berisi aturan wajib untuk penulisan kode, pemilihan dependency, dan 
 
 - Interval pengiriman data ke MQTT broker didefinisikan sebagai konstanta di awal file, bukan angka literal tersebar di kode (magic number).
 - Batas normal (threshold) tiap parameter didefinisikan di satu tempat (misal file konfigurasi/header terpisah) agar mudah diubah saat standar baku mutu final tersedia.
-- Logic pembacaan sensor dan logic tampilan (OLED/TFT) dipisah menjadi fungsi berbeda.
+- Logic pembacaan sensor dan logic tampilan (TFT, via `TFT_eSPI`) dipisah menjadi fungsi berbeda.
 
 ## 6. Backend
 

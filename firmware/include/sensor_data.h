@@ -18,6 +18,15 @@ struct SensorReadings {
   // value in the fields above but is marked invalid here so display/
   // and network/ can decide whether to show/publish it.
   bool valid[7] = {false, false, false, false, false, false, false};
+
+  // Room temperature (GY-SHT31, degrees C) — display-only info per
+  // architecture.md 2.1 "Catatan suhu ruangan": deliberately NOT one of
+  // the 7 official parameters, so it must never be added to `valid[]`,
+  // never published over MQTT (see mqtt_pub.cpp), never persisted, and
+  // never evaluated against thresholds.h. Promote it properly (new
+  // SensorIndex slot + prd.md/schema.md update) if it becomes official.
+  float roomTempC = 0;
+  bool roomTempValid = false;
 };
 
 enum SensorIndex {

@@ -34,6 +34,28 @@ Each sensor/network/display module only depends on `include/sensor_data.h`
 (the shared struct) and its own libraries — not on each other — per
 `../rule.md` section 3.
 
+## Hardware (current, see architecture.md 2.1 for full change log)
+
+7 official parameters + 1 display-only value:
+
+| Parameter | Sensor | Bus |
+|---|---|---|
+| PM2.5 / PM10 | SDS011 | UART1 |
+| CO2 | MH-Z19B | UART2 |
+| TVOC | GY-SGP30 | I2C |
+| NO2 | MiCS-4514 | I2C |
+| Lux | BH1750 | I2C |
+| Noise | MAX9814 | ADC |
+| Room temp (display-only, not published/stored/alerted) | GY-SHT31 | I2C |
+
+Display: ST7796 4.0" 480x320 SPI (`TFT_eSPI`), replaces the originally
+planned ILI9341 2.8" — see architecture.md for the reasoning.
+
+SDS011 (replaces PMS5003) and MH-Z19B (replaces SCD30) were swapped in
+after the originally planned sensors had seller pre-order lead times
+that didn't fit the project deadline — pin allocations were rebudgeted
+accordingly (see `include/config.h` comments).
+
 ## Known placeholders (update before relying on real readings)
 
 - `include/thresholds.h` — normal ranges are placeholders pending the
@@ -42,7 +64,14 @@ Each sensor/network/display module only depends on `include/sensor_data.h`
   needs calibration against the datasheet/reference meter.
 - `src/sensors/mic_noise.cpp` — noise_db is uncalibrated relative loudness,
   not a certified SPL reading.
+- `src/sensors/sds011.cpp` / `src/sensors/mhz19.cpp` — libraries
+  (`SdsDustSensor`, `MH-Z19`) were picked as fast substitutions; re-check
+  their maintenance status per `../rule.md` section 2 before relying on
+  them for the real build.
 - `src/network/mqtt_pub.cpp` — TLS uses `setInsecure()`; pin HiveMQ's root
   CA before the real demo/deployment (see comment in that file).
 - `include/config.h` — only 7 of the 10 LEDs on the BOM are wired to
   GPIOs; the remaining 3 need an I2C GPIO expander or pin re-budget.
+- `include/User_Setup.h` — `SPI_FREQUENCY` (27MHz) for the ST7796 over a
+  remapped (non-native-VSPI) GPIO pinout is an untested starting point;
+  tune once the actual wiring is on the bench.
