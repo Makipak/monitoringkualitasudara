@@ -37,8 +37,9 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 - **Library:** tetap `TFT_eSPI`, hanya konfigurasi driver di `User_Setup.h` yang diganti dari `ILI9341_DRIVER` menjadi `ST7796_DRIVER` — tidak perlu belajar library/tool baru.
 - **Ukuran & resolusi:** 4.0" (480x320px, perlu dikonfirmasi ulang ke seller karena ada ketidaksesuaian info produk antara 480x320 dan 320x240 di listing pembelian), signifikan lebih besar dari ILI9341 2.8" sebelumnya, dan jauh lebih murah dibanding opsi Nextion (~Rp360.000 vs jutaan rupiah untuk Nextion) — perlu diupdate manual di `projek.xlsx` (BOM).
 - Opsi lain yang sempat dipertimbangkan dan tidak dipilih: Nextion Basic/Enhanced/Intelligent Series (perlu software Nextion Editor terpisah dan MCU display sendiri), ESP32 LVGL Smart Display all-in-one (kompleksitas GPIO/processing lebih tinggi, dokumentasi generic/clone kurang jelas), TJC (varian pasar China dari Nextion, dokumentasi kurang lengkap untuk pasar global), ILI9488 3.5" (alternatif SPI TFT lain di kelas ukuran serupa).
+- **Catatan development sementara:** unit TFT 4.0" ST7796 masih dalam pengiriman. Selama menunggu, development firmware dilakukan sementara menggunakan TFT SPI 2.4" (kemungkinan chip ILI9341, satu keluarga dengan ST7796) yang sudah tersedia — interface, pin, dan library (`TFT_eSPI`) sama persis, hanya beda konfigurasi driver (`ILI9341_DRIVER`) dan resolusi (320x240 vs 480x320 pada unit final). Ini bukan perubahan keputusan komponen; ST7796 4.0" tetap komponen resmi untuk perangkat final. Setelah unit 4.0" tiba, konfigurasi driver di `User_Setup.h` diganti ke `ST7796_DRIVER` dan koordinat/skala elemen tampilan disesuaikan dengan resolusi baru.
 
-**Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu ditampilkan di layar TFT sebagai info pendukung saja — tidak dikirim ke MQTT, tidak disimpan ke database, dan tidak masuk evaluasi threshold/alert seperti 7 parameter resmi lainnya. Jika ke depan suhu perlu jadi parameter resmi dengan alert, update `prd.md`/`schema.md`.
+**Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu dikirim ke MQTT, disimpan ke database, dan ditampilkan di layar TFT maupun mobile app — **namun statusnya tetap sebagai info pendukung, bukan parameter resmi ber-alert**: tidak dievaluasi terhadap threshold, tidak memicu LED/notifikasi, dan tidak dihitung dalam status normal/tidak normal ruangan. Jika ke depan suhu perlu naik status jadi parameter dengan alert penuh, update `prd.md` (tambah FR) dan `thresholds`/evaluasi alert di `schema.md`.
 
 **Catatan penggantian sensor CO2 (MH-Z19B, bukan SCD30):**
 - **Alasan:** sama seperti SDS011 — SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai tenggat waktu proyek. MH-Z19B dipilih karena ready stock dan umum ditemukan di marketplace lokal.
@@ -67,9 +68,12 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
   "co2": 620,
   "tvoc": 150,
   "lux": 300,
-  "noise_db": 42.5
+  "noise_db": 42.5,
+  "temperature": 25.3
 }
 ```
+
+**Catatan:** `temperature` dikirim dan disimpan seperti parameter lain, tetapi tidak masuk evaluasi threshold/alert (lihat catatan suhu ruangan di bagian 2.2).
 
 ### 2.4 Contoh Publish (Arduino/PlatformIO)
 
@@ -84,7 +88,7 @@ const int mqtt_port = 8883;
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-void publishSensorData(float pm25, float pm10, float no2, float co2, float tvoc, float lux, float noiseDb) {
+void publishSensorData(float pm25, float pm10, float no2, float co2, float tvoc, float lux, float noiseDb, float temperature) {
   StaticJsonDocument<256> doc;
   doc["device_id"] = "room-01";
   doc["pm25"] = pm25;
@@ -94,6 +98,7 @@ void publishSensorData(float pm25, float pm10, float no2, float co2, float tvoc,
   doc["tvoc"] = tvoc;
   doc["lux"] = lux;
   doc["noise_db"] = noiseDb;
+  doc["temperature"] = temperature;
 
   char buffer[256];
   serializeJson(doc, buffer);
@@ -116,7 +121,8 @@ void publishSensorData(float pm25, float pm10, float no2, float co2, float tvoc,
 - Subscribe ke topic MQTT dari HiveMQ Cloud.
 - Assign timestamp server-side saat data diterima.
 - Simpan data ke PostgreSQL (Supabase).
-- Evaluasi threshold (server-side, sebagai sumber kebenaran untuk histori/notifikasi — terpisah dari threshold instan di device).
+- Evaluasi threshold (server-side, sebagai sumber kebenaran untuk histori/notifikasi — terpisah dari threshold instan di device). **Hanya diterapkan pada 7 parameter resmi** (pm25, pm10, no2, co2, tvoc, lux, noise_db); `temperature` disimpan dan ditampilkan tapi dikecualikan dari evaluasi ini.
+- Menghasilkan rekomendasi tindakan sederhana berbasis **rule-based** (bukan Machine Learning) saat ada parameter out-of-range — lihat bagian 4.2a. Ini solusi sementara sampai sistem rekomendasi ML (lihat `prd.md` - Open Questions) siap didiskusikan dan diimplementasikan bersama tim.
 - Trigger push notification saat ada parameter out-of-range.
 - Expose REST API (data terkini, histori, export harian).
 - Broadcast update real-time ke app yang sedang terbuka (WebSocket).
@@ -153,7 +159,20 @@ client.on("message", async (topic, payload) => {
 });
 ```
 
-### 4.3 REST API (usulan endpoint awal)
+### 4.2a Rule-Based Recommendation (interim, pengganti ML sementara)
+
+Karena sistem rekomendasi berbasis ML belum siap (masih tahap diskusi tim, lihat `prd.md` bagian Open Questions), evaluasi dan rekomendasi memakai **rule-based sederhana**: bandingkan nilai tiap parameter terhadap `min_value`/`max_value` di tabel `thresholds`, lalu hasilkan teks rekomendasi tetap per parameter/arah penyimpangan (tinggi/rendah).
+
+Implementasi lengkap ada di `threshold.js` (fungsi `evaluateThresholds`). Fungsi ini dipanggil di `client.on("message", ...)` seperti pada contoh subscribe di atas.
+
+Karakteristik pendekatan ini:
+- **Threshold diambil dari database** (tabel `thresholds`), bukan hardcode di kode — supaya bisa diubah begitu standar baku mutu final (Kemenkes/WHO/ASHRAE) ditentukan, tanpa redeploy.
+- **Teks rekomendasi bersifat generik per parameter**, bukan personalisasi berbasis pola/tren historis seperti yang direncanakan untuk sistem ML nantinya.
+- **Bisa menghasilkan lebih dari satu alert sekaligus** jika beberapa parameter menyimpang bersamaan (misal PM2.5 tinggi dan CO2 tinggi di waktu yang sama) — masing-masing dengan rekomendasi terpisah.
+- Struktur `alerts` di `schema.md` sudah kompatibel dengan pendekatan ini (kolom `parameter`, `value`, `threshold_id`), sehingga tidak perlu perubahan skema.
+- **Jika nanti sistem ML sudah siap**, rule-based ini bisa tetap dipertahankan sebagai *fallback* cepat (misal saat model ML gagal/timeout) atau digantikan sepenuhnya — keputusan ini menyusul setelah desain ML difinalkan bersama tim.
+
+
 
 | Method | Endpoint | Fungsi |
 |---|---|---|
@@ -168,6 +187,38 @@ Detail skema request/response akan dituliskan lebih lengkap saat implementasi AP
 
 - WebSocket (`socket.io` atau native `ws`) digunakan agar app yang sedang dibuka mendapat update tanpa polling.
 - Trade-off: `socket.io` lebih mudah untuk reconnect handling & room-based broadcast (berguna kalau nanti multi-device), tapi overhead sedikit lebih besar dibanding `ws` native. Untuk v1 (1 device), `ws` native sudah cukup; `socket.io` lebih future-proof kalau rencana multi-room direalisasikan.
+
+### 4.5 Struktur Folder Backend (usulan)
+
+Backend belum di-scaffold saat dokumen ini ditulis. Struktur berikut jadi acuan implementasi (oleh siapapun/tools yang mengerjakan, termasuk Claude Cowork), mengikuti prinsip *single responsibility* di `rule.md`:
+
+```
+backend/
+  src/
+    services/
+      threshold.js       # rule-based evaluation + rekomendasi (lihat 4.2a)
+      mqtt.js             # subscribe HiveMQ, terima & parse payload sensor
+      db.js               # koneksi & query PostgreSQL (Supabase)
+      ws.js                # broadcast realtime ke mobile app
+    routes/
+      rooms.js            # REST API endpoint (lihat 4.3)
+    index.js              # entry point, wiring semua service
+  package.json
+  .env                    # kredensial MQTT, DB, JWT secret (tidak di-commit, lihat rule.md)
+```
+
+### 4.6 Struktur Folder Proyek Keseluruhan (usulan)
+
+```
+D:\projek\udara\
+  prd.md
+  rule.md
+  architecture.md
+  schema.md
+  backend\          # lihat 4.5
+  firmware\          # project PlatformIO (ESP32)
+  mobile-app\        # project React Native (lihat 6.2)
+```
 
 ## 5. Database Layer (PostgreSQL via Supabase)
 
@@ -226,7 +277,8 @@ src/
 
 ## 9. Item yang Masih Terbuka
 
-- Desain sistem rekomendasi ML (letak inference, trigger, integrasi ke flow di atas) — menyusul setelah didiskusikan dengan tim.
+- Desain sistem rekomendasi ML (letak inference, trigger, integrasi ke flow di atas) — menyusul setelah didiskusikan dengan tim. Rule-based (`threshold.js`, bagian 4.2a) dipakai sebagai solusi sementara.
 - Kebijakan retensi data historis.
 - Role/permission user di app (memengaruhi apakah perlu auth multi-role di backend).
 - Pemilihan `socket.io` vs `ws` final saat implementasi.
+- **Implementasi:** backend (struktur di 4.5), firmware ESP32, dan mobile app React Native belum di-scaffold — dokumen ini (`prd.md`, `rule.md`, `architecture.md`, `schema.md`) jadi acuan utama untuk implementasi tahap berikutnya, termasuk jika dikerjakan lewat Claude Cowork.

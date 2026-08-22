@@ -18,7 +18,7 @@ A third piece, the Node.js backend (MQTT subscriber + REST/WebSocket API + Postg
 - `schema.md` — PostgreSQL schema (tables, indexes, example queries).
 - `rule.md` — mandatory conventions: no deprecated/unmaintained dependencies, credentials only via env vars/gitignored files (never hardcoded or committed), single-responsibility modules, no emoji in docs, magic numbers must be named constants, thresholds centralized in one file.
 
-Several things are explicitly undecided (see "Open Questions" in `prd.md` and `architecture.md` section 9) — don't assume a final answer for user roles/auth, the ML recommendation system, data retention policy, or `socket.io` vs `ws` unless the user has stated a decision in this conversation.
+Several things are explicitly undecided (see "Open Questions" in `prd.md` and `architecture.md` section 9) — don't assume a final answer for user roles/auth, data retention policy, or `socket.io` vs `ws` unless the user has stated a decision in this conversation. The ML recommendation system itself is still undecided long-term, but v1 has a decided interim: **rule-based** evaluation/recommendation (`architecture.md` 4.2a, backend's planned `services/threshold.js`) — don't build out an ML pipeline unless the user says the ML decision has landed.
 
 ## mobile/ (React Native)
 
@@ -63,19 +63,24 @@ Config files (`babel.config.js`, `metro.config.js`, `jest.config.js`, `tsconfig.
 ```sh
 cd firmware
 cp include/secrets.h.example include/secrets.h   # fill in real WiFi/MQTT creds, gitignored
-pio run                      # build
-pio run --target upload       # flash over USB
-pio device monitor            # serial monitor, 115200 baud
+
+pio run                       # build (default env = final ST7796 4.0" display)
+pio run --target upload        # flash over USB
+pio device monitor             # serial monitor, 115200 baud
+
+# Temporary bench-test env (2.4" ILI9341-family display) while the ST7796
+# 4.0" unit is in transit — see `firmware/README.md` "Hardware":
+pio run -e esp32doit-devkit-v1-dev-display
 ```
 
 ### Architecture
 
 - `firmware/include/config.h` — every pin assignment and timing interval as a named constant (rule.md 5); check here first when wiring changes.
-- `firmware/include/thresholds.h` — local, device-side normal ranges per parameter, used only to drive the instant LED indicator so it keeps working when the device is offline from the broker (`architecture.md` 2.2). This is separate from the server-side `thresholds` table in `schema.md`, which is the source of truth for history/notifications.
+- `firmware/include/thresholds.h` — local, device-side normal ranges for the 7 official parameters, used only to drive the instant LED indicator so it keeps working when the device is offline from the broker (`architecture.md` 2.2). This is separate from the server-side `thresholds` table in `schema.md`, which is the source of truth for history/notifications/rule-based recommendations (`architecture.md` 4.2a).
 - `firmware/include/secrets.h` (gitignored, copy from `secrets.h.example`) — WiFi + HiveMQ Cloud credentials. Never hardcode these directly in `.cpp` files or commit real values.
-- `firmware/include/User_Setup.h` — TFT_eSPI display pin/driver config (ST7796 4.0" 480x320, replaces the originally planned ILI9341 2.8" — see `architecture.md` 2.1), injected via `-include` in `platformio.ini` rather than editing the library's bundled copy (which `pio lib update` would overwrite).
-- `firmware/src/sensors/` — one file pair per sensor: SDS011 (PM2.5/PM10, UART1, replaces PMS5003), MH-Z19B (CO2, UART2, replaces SCD30), SGP30 (TVOC, I2C), MiCS-4514 (NO2, I2C), BH1750 (lux, I2C), MAX9814-based noise (ADC). SDS011/MH-Z19B replaced the originally planned sensors due to seller pre-order lead times (`architecture.md` 2.1) — pin budget was rebudgeted accordingly in `config.h`. Each reads into the shared `SensorReadings` struct (`include/sensor_data.h`) via `sensors.h`'s `sensorsRead()`. Sensor code has no knowledge of display or network. GY-SHT31 (room temperature, I2C) is also read here but is display-only — deliberately excluded from MQTT publish, persistence, and threshold evaluation (see the warning comment on `SensorReadings::roomTempC`); don't wire it into those paths without also updating `prd.md`/`schema.md`.
-- `firmware/src/network/` — `wifi_conn.*` and `mqtt_pub.*`. Both expose non-blocking `*Maintain()` functions called every `loop()` iteration; actual reconnect attempts are internally rate-limited by the intervals in `config.h`. `mqttPublishReadings()` serializes `SensorReadings` to the JSON shape defined in `architecture.md` 2.3 and publishes to `hospital/{DEVICE_ID}/sensors`.
+- `firmware/include/User_Setup.h` — TFT_eSPI display pin/driver config for the **official** ST7796 4.0" 480x320 display (replaces the originally planned ILI9341 2.8" — see `architecture.md` 2.1), injected via `-include` in the default `platformio.ini` env rather than editing the library's bundled copy (which `pio lib update` would overwrite). `firmware/include/User_Setup_Dev.h` is a **temporary** sibling config for bench-testing with a 2.4" ILI9341-family display while the ST7796 unit is in transit (`architecture.md` 2.2) — only used by the separate `esp32doit-devkit-v1-dev-display` PlatformIO env; delete both once the ST7796 unit is confirmed working.
+- `firmware/src/sensors/` — one file pair per sensor: SDS011 (PM2.5/PM10, UART1, replaces PMS5003), MH-Z19B (CO2, UART2, replaces SCD30), SGP30 (TVOC, I2C), MiCS-4514 (NO2, I2C), BH1750 (lux, I2C), MAX9814-based noise (ADC). SDS011/MH-Z19B replaced the originally planned sensors due to seller pre-order lead times (`architecture.md` 2.1) — pin budget was rebudgeted accordingly in `config.h`. Each reads into the shared `SensorReadings` struct (`include/sensor_data.h`) via `sensors.h`'s `sensorsRead()`. Sensor code has no knowledge of display or network. GY-SHT31 (room temperature, I2C) is also read here — it IS published over MQTT and persisted like the 7 official parameters, but is deliberately excluded from threshold evaluation and LED/alert triggering (see the warning comment on `SensorReadings::roomTempC`); don't wire it into those paths without also updating `prd.md` (new FR) and `schema.md` 3.4.
+- `firmware/src/network/` — `wifi_conn.*` and `mqtt_pub.*`. Both expose non-blocking `*Maintain()` functions called every `loop()` iteration; actual reconnect attempts are internally rate-limited by the intervals in `config.h`. `mqttPublishReadings()` serializes `SensorReadings` (7 official parameters + `temperature`) to the JSON shape defined in `architecture.md` 2.3 and publishes to `hospital/{DEVICE_ID}/sensors`.
 - `firmware/src/display/` — `display.*` (TFT rendering) and `led_alert.*` (per-parameter red LED, evaluated against `thresholds.h`), kept as separate concerns from sensor reading (rule.md 3).
 - `firmware/src/main.cpp` — `setup()`/`loop()` orchestration only; no sensor/display/network logic lives here directly.
 

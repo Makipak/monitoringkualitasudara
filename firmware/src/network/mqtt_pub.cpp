@@ -71,6 +71,10 @@ bool mqttPublishReadings(const SensorReadings &readings) {
   if (readings.valid[SENSOR_TVOC]) doc["tvoc"] = readings.tvoc;
   if (readings.valid[SENSOR_LUX]) doc["lux"] = readings.lux;
   if (readings.valid[SENSOR_NOISE]) doc["noise_db"] = readings.noiseDb;
+  // Published and persisted like the 7 official parameters (architecture.md
+  // 2.3/schema.md 3.3), but intentionally excluded from thresholds.h /
+  // valid[] — never gates an LED or alert (see sensor_data.h comment).
+  if (readings.roomTempValid) doc["temperature"] = readings.roomTempC;
 
   char payload[256];
   size_t len = serializeJson(doc, payload, sizeof(payload));

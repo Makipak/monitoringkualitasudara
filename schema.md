@@ -81,6 +81,7 @@ Tabel utama, menyimpan setiap pembacaan sensor. Volume data paling besar ada di 
 | tvoc | DOUBLE PRECISION | ppb |
 | lux | DOUBLE PRECISION | lux |
 | noise_db | DOUBLE PRECISION | dB |
+| temperature | DOUBLE PRECISION | °C — disimpan dan ditampilkan (OLED/app), **tidak termasuk 7 parameter resmi**, tidak dievaluasi terhadap `thresholds`/`alerts` |
 
 ```sql
 CREATE TABLE sensor_readings (
@@ -93,7 +94,8 @@ CREATE TABLE sensor_readings (
   co2 DOUBLE PRECISION,
   tvoc DOUBLE PRECISION,
   lux DOUBLE PRECISION,
-  noise_db DOUBLE PRECISION
+  noise_db DOUBLE PRECISION,
+  temperature DOUBLE PRECISION
 );
 
 -- Index utama untuk query histori per device, terurut waktu terbaru

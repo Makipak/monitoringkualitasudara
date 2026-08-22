@@ -10,33 +10,40 @@ pip install platformio     # or use the PlatformIO IDE VS Code extension
 cd firmware
 cp include/secrets.h.example include/secrets.h
 # edit include/secrets.h with real WiFi + HiveMQ Cloud credentials
-pio run                    # build
-pio run --target upload    # flash (device connected via USB)
-pio device monitor         # serial monitor, 115200 baud
+
+pio run                                            # build (final ST7796 4.0" display)
+pio run --target upload                            # flash (device connected via USB)
+pio device monitor                                  # serial monitor, 115200 baud
+
+# While the ST7796 4.0" unit is still in transit, bench-test with a
+# temporary 2.4" ILI9341-family display instead (see "Hardware" below):
+pio run -e esp32doit-devkit-v1-dev-display
+pio run -e esp32doit-devkit-v1-dev-display --target upload
 ```
 
 ## Structure
 
 ```
 include/
-  config.h          pin map + timing constants
-  thresholds.h       local (device-side) normal ranges per parameter
-  secrets.h.example  copy to secrets.h (gitignored) before building
-  User_Setup.h        TFT_eSPI display config, injected via platformio.ini
+  config.h              pin map + timing constants
+  thresholds.h           local (device-side) normal ranges per parameter
+  secrets.h.example      copy to secrets.h (gitignored) before building
+  User_Setup.h            TFT_eSPI config for the final ST7796 4.0" display
+  User_Setup_Dev.h        TFT_eSPI config for the temporary bench-test display
 src/
-  main.cpp            setup()/loop() orchestration only
-  sensors/            one file per sensor, all read into a single SensorReadings struct
-  network/            WiFi + MQTT connection/publish
-  display/            TFT rendering + LED threshold indicator
+  main.cpp                setup()/loop() orchestration only
+  sensors/                 one file per sensor, all read into a single SensorReadings struct
+  network/                 WiFi + MQTT connection/publish
+  display/                 TFT rendering + LED threshold indicator
 ```
 
 Each sensor/network/display module only depends on `include/sensor_data.h`
 (the shared struct) and its own libraries — not on each other — per
 `../rule.md` section 3.
 
-## Hardware (current, see architecture.md 2.1 for full change log)
+## Hardware (current, see architecture.md 2.1/2.2 for full change log)
 
-7 official parameters + 1 display-only value:
+7 official (alerted) parameters + 1 published-but-not-alerted value:
 
 | Parameter | Sensor | Bus |
 |---|---|---|
@@ -46,10 +53,19 @@ Each sensor/network/display module only depends on `include/sensor_data.h`
 | NO2 | MiCS-4514 | I2C |
 | Lux | BH1750 | I2C |
 | Noise | MAX9814 | ADC |
-| Room temp (display-only, not published/stored/alerted) | GY-SHT31 | I2C |
+| Room temp (published + stored, excluded from thresholds/alerts) | GY-SHT31 | I2C |
 
-Display: ST7796 4.0" 480x320 SPI (`TFT_eSPI`), replaces the originally
-planned ILI9341 2.8" — see architecture.md for the reasoning.
+Display: **ST7796 4.0" 480x320 SPI** (`TFT_eSPI`) is the official
+component, replacing the originally planned ILI9341 2.8" — see
+architecture.md 2.1 for the reasoning. That unit is still in transit as
+of this writing, so firmware is being bench-tested in the meantime on a
+temporary 2.4" ILI9341-family SPI display (same pins/library, different
+driver macro + resolution — architecture.md 2.2). Use the
+`esp32doit-devkit-v1-dev-display` PlatformIO environment for that; the
+default environment always targets the final ST7796 config
+(`include/User_Setup.h`). Once the ST7796 unit arrives and
+`User_Setup.h` is verified against it, delete `User_Setup_Dev.h` and the
+dev environment in `platformio.ini`.
 
 SDS011 (replaces PMS5003) and MH-Z19B (replaces SCD30) were swapped in
 after the originally planned sensors had seller pre-order lead times
@@ -75,3 +91,5 @@ accordingly (see `include/config.h` comments).
 - `include/User_Setup.h` — `SPI_FREQUENCY` (27MHz) for the ST7796 over a
   remapped (non-native-VSPI) GPIO pinout is an untested starting point;
   tune once the actual wiring is on the bench.
+- `include/User_Setup_Dev.h` / the `esp32doit-devkit-v1-dev-display` env
+  — temporary, delete both once the ST7796 4.0" unit is confirmed working.

@@ -30,7 +30,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 ### Out of Scope (v1, kandidat pengembangan lanjutan)
 - Multi-device / multi-ruangan.
 - Multi-role user (admin, staff, viewer) — masih didiskusikan, belum difinalkan untuk v1.
-- Sistem rekomendasi berbasis Machine Learning — masih dalam diskusi tim, akan didefinisikan di iterasi berikutnya.
+- Sistem rekomendasi berbasis Machine Learning — masih dalam diskusi tim, akan didefinisikan di iterasi berikutnya. **Untuk v1, rekomendasi memakai pendekatan rule-based sederhana** (lihat FR-B5 dan `architecture.md` bagian 4.2a), bukan model ML.
 - Broker MQTT self-hosted (dipilih HiveMQ Cloud managed untuk v1).
 
 ## 4. Pengguna & Stakeholder
@@ -45,26 +45,27 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 |----|-------------|
 | FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (SDS011, MH-Z19B, SGP30, MiCS-4514, BH1750, MAX9814). |
 | FR-D2 | Perangkat menampilkan nilai seluruh parameter di layar OLED/TFT. |
-| FR-D3 | Perangkat menyalakan LED merah ketika satu atau lebih parameter melebihi/di bawah batas normal. |
+| FR-D3 | Perangkat menyalakan LED merah ketika satu atau lebih dari 7 parameter resmi melebihi/di bawah batas normal. |
 | FR-D4 | Perangkat mengirim data sensor ke MQTT broker secara berkala melalui koneksi internet. |
+| FR-D5 | Perangkat membaca suhu ruangan (GY-SHT31) dan menyertakannya dalam data yang ditampilkan di layar serta dikirim ke MQTT — suhu bersifat informatif saja, tidak termasuk 7 parameter resmi dan tidak memicu LED alert. |
 
 ### 5.2 Backend
 | ID | Requirement |
 |----|-------------|
 | FR-B1 | Backend subscribe ke topic MQTT dan menerima data dari perangkat. |
-| FR-B2 | Backend menyimpan data sensor ke TimescaleDB beserta timestamp. |
+| FR-B2 | Backend menyimpan data sensor (termasuk suhu) ke PostgreSQL (Supabase) beserta timestamp. |
 | FR-B3 | Backend menyediakan REST API untuk data historis dan status terkini. |
 | FR-B4 | Backend mengirim update real-time ke mobile app (WebSocket). |
-| FR-B5 | Backend mengevaluasi nilai parameter terhadap batas normal dan memicu notifikasi jika menyimpang. |
+| FR-B5 | Backend mengevaluasi 7 parameter resmi terhadap batas normal (rule-based) dan memicu notifikasi beserta rekomendasi tindakan sederhana jika menyimpang. Suhu disimpan dan diteruskan ke app tetapi dikecualikan dari evaluasi ini. |
 | FR-B6 | Backend menyediakan endpoint export data harian. |
 
 ### 5.3 Mobile App
 | ID | Requirement |
 |----|-------------|
-| FR-A1 | Dashboard menampilkan seluruh parameter beserta status (normal/tidak normal). |
+| FR-A1 | Dashboard menampilkan 7 parameter resmi beserta status (normal/tidak normal), ditambah suhu ruangan sebagai info pendukung tanpa status normal/tidak normal. |
 | FR-A2 | Dashboard update secara real-time saat ada data baru. |
-| FR-A3 | Pengguna dapat melihat riwayat data per parameter. |
-| FR-A4 | Pengguna menerima push notification saat ada parameter out-of-range. |
+| FR-A3 | Pengguna dapat melihat riwayat data per parameter (termasuk suhu). |
+| FR-A4 | Pengguna menerima push notification saat ada dari 7 parameter resmi yang out-of-range (suhu tidak memicu notifikasi). |
 | FR-A5 | Pengguna dapat melakukan export data harian dari app. |
 
 ## 6. Non-Functional Requirements
@@ -95,7 +96,7 @@ Ambang batas normal tiap parameter akan mengacu pada standar resmi (Kemenkes/WHO
 
 - Peran/role pengguna di mobile app.
 - Standar baku mutu final per parameter.
-- Desain sistem rekomendasi ML (data training, letak inference, trigger).
+- Desain sistem rekomendasi ML (data training, letak inference, trigger) — **untuk v1, evaluasi dan rekomendasi memakai rule-based sederhana** (lihat `architecture.md` bagian 4.2a) sebagai solusi sementara karena model ML belum siap. Desain ML tetap didiskusikan dengan tim untuk iterasi berikutnya, sebagai pelengkap atau pengganti rule-based ini.
 - Format file export data harian.
 
 ## 10. Success Metrics

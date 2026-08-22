@@ -12,6 +12,11 @@
 // PLACEHOLDER VALUES — replace once the official reference (Kemenkes/WHO/
 // ASHRAE, see prd.md section 8) is finalized. Keeping them in one place
 // (rule.md 5) so that update is a one-file change.
+//
+// Deliberately 7 entries, not 8: room temperature (GY-SHT31) is published
+// and stored (architecture.md 2.1 / schema.md 3.3) but explicitly
+// excluded from threshold evaluation — do not add a "temperature" row
+// here without first updating prd.md (new FR) and schema.md 3.4.
 // ---------------------------------------------------------------------------
 
 struct Threshold {

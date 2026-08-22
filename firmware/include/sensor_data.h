@@ -19,12 +19,13 @@ struct SensorReadings {
   // and network/ can decide whether to show/publish it.
   bool valid[7] = {false, false, false, false, false, false, false};
 
-  // Room temperature (GY-SHT31, degrees C) — display-only info per
-  // architecture.md 2.1 "Catatan suhu ruangan": deliberately NOT one of
-  // the 7 official parameters, so it must never be added to `valid[]`,
-  // never published over MQTT (see mqtt_pub.cpp), never persisted, and
-  // never evaluated against thresholds.h. Promote it properly (new
-  // SensorIndex slot + prd.md/schema.md update) if it becomes official.
+  // Room temperature (GY-SHT31, degrees C) — per architecture.md 2.1
+  // "Catatan suhu ruangan" / schema.md 3.4: IS published over MQTT (see
+  // mqtt_pub.cpp, `temperature` field) and persisted by the backend, but
+  // deliberately NOT one of the 7 official parameters — must never be
+  // added to `valid[]`/thresholds.h, must never drive an LED or alert.
+  // Promote it properly (new SensorIndex slot + prd.md FR + schema.md
+  // `thresholds` row) if it needs to become a fully alerted parameter.
   float roomTempC = 0;
   bool roomTempValid = false;
 };
