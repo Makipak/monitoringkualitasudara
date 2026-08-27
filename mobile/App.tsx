@@ -1,5 +1,6 @@
 /**
- * Udara — React Native app
+ * UF IAQ — React Native app (display name; native identifiers unchanged,
+ * see CLAUDE.md)
  *
  * @format
  */

@@ -1,15 +1,33 @@
-# Udara
+# UF IAQ (mobile)
 
-React Native (bare CLI, TypeScript) app untuk kontrol/monitoring device IoT.
+React Native (bare CLI, TypeScript) app for the Udara hospital air quality
+monitoring system - see `../architecture.md` section 6 for the full
+design. Display name is "UF IAQ" (see `../CLAUDE.md` Project status);
+native identifiers (`com.udaraapp`, npm package `UdaraApp`) are unchanged.
 
-- Navigasi: React Navigation (native-stack) — lihat `src/navigation/RootNavigator.tsx`.
-- Layar: `src/screens/`.
-- Logic komunikasi device (BLE/MQTT, belum diimplementasi): `src/services/README.md`.
+- Navigation: React Navigation, bottom tabs (Beranda/Prediksi/Riwayat/Tentang)
+  with a nested native-stack inside Beranda for the parameter detail screen -
+  see `src/navigation/RootNavigator.tsx`.
+- Screens: `src/screens/` - one file per screen, presentational only; data
+  fetching lives in `src/hooks/` (rule.md section 7).
+- Backend calls: `src/services/api.ts` (REST + JWT) and `socket.ts`
+  (WebSocket) - the app only ever talks to `../backend/`, never directly
+  to MQTT/the device.
+- Local config: `src/config/env.ts` (gitignored, copy from `env.example.ts`).
+- Visual design ported from a Claude Design prototype (`../design/UF IAQ.dc.html`) -
+  see that file's structure for the reference layout/copy this UI follows.
+  The design's "Prediksi" (AI) tab mockup assumed per-parameter forecasts +
+  a future trend chart; the actual trained model (`../ml-service/`, a BiGRU
+  classifier) only outputs a composite status label + per-class
+  probabilities, so `src/screens/PredictionScreen.tsx` was redesigned to
+  show real model output instead of following that mockup 1:1 - see the
+  notice at the top of that file.
 
 Setup pertama kali:
 
 ```sh
 npm install
+cp src/config/env.example.ts src/config/env.ts   # fill in backend URL + access key, gitignored
 # iOS saja:
 cd ios && bundle install && bundle exec pod install && cd ..
 ```

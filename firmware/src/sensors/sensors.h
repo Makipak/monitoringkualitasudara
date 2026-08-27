@@ -9,10 +9,14 @@
 void sensorsInit();
 
 // Reads whatever is ready from each sensor into `readings`, updating
-// readings.valid[] per-parameter (and readings.roomTempValid for the
-// non-official temperature reading). Non-blocking beyond each driver's
-// own short internal wait; call on a fixed interval from loop() (see
-// SENSOR_READ_INTERVAL_MS in config.h).
+// readings.valid[] per-parameter (and readings.sht31Valid for the
+// non-official temperature/humidity reading). Non-blocking beyond each
+// driver's own short internal wait; call on a fixed interval from
+// loop() (see SENSOR_READ_INTERVAL_MS in config.h).
 void sensorsRead(SensorReadings &readings);
+
+// Call every loop() iteration; drives continuous internal sampling for
+// sensors that need it (currently SGP30's 1Hz dynamic baseline).
+void sensorsMaintain();
 
 #endif // SENSORS_H

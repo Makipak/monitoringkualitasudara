@@ -1,0 +1,17 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+
+# Needed to reconstruct/run the trained BiGRU model + apply the
+# StandardScaler (bigru_model_20260825_170626.pkl, model_from_json() +
+# set_weights(), not keras.models.load_model() - see README) and
+# scaler_20260825_170626.pkl (joblib.dump'd sklearn StandardScaler).
+tensorflow-cpu>=2.21
+joblib>=1.4
+
+# Pinned, not >=: confirmed via InconsistentVersionWarning that
+# scaler_20260825_170626.pkl was fitted with exactly scikit-learn
+# 1.6.1. If the model/scaler get retrained with a different
+# scikit-learn version, update this pin to match the new training
+# environment - don't just bump it to "latest".
+scikit-learn==1.6.1

@@ -1,0 +1,26 @@
+{
+  "feature_cols": [
+    "pm2_5",
+    "pm10",
+    "tvoc",
+    "no2",
+    "co2",
+    "sound",
+    "illuminance_lux_matched",
+    "humidity",
+    "temperature"
+  ],
+  "window": 60,
+  "label_map": {
+    "0": "Baik",
+    "1": "Rawan",
+    "2": "Peringatan",
+    "3": "Bahaya"
+  },
+  "test_accuracy": 0.9880717992782593,
+  "macro_f1": 0.9883328112563231,
+  "weighted_f1": 0.9880706143367418,
+  "n_train_blocks": 387,
+  "n_val_blocks": 77,
+  "n_test_blocks": 77
+}

@@ -15,6 +15,8 @@ rooms (1) ──< devices (1) ──< sensor_readings
                     │
                     └──< alerts
                     │
+                    └──< predictions
+                    │
                     └──< device_push_tokens
 
 thresholds (referensi standar per parameter, tidak terikat 1 device tertentu)
@@ -82,6 +84,7 @@ Tabel utama, menyimpan setiap pembacaan sensor. Volume data paling besar ada di 
 | lux | DOUBLE PRECISION | lux |
 | noise_db | DOUBLE PRECISION | dB |
 | temperature | DOUBLE PRECISION | °C — disimpan dan ditampilkan (OLED/app), **tidak termasuk 7 parameter resmi**, tidak dievaluasi terhadap `thresholds`/`alerts` |
+| humidity | DOUBLE PRECISION | %RH — dari sensor yang sama (GY-SHT31) dengan `temperature`, perlakuan sama: disimpan dan ditampilkan, **tidak termasuk 7 parameter resmi**, tidak dievaluasi terhadap `thresholds`/`alerts` |
 
 ```sql
 CREATE TABLE sensor_readings (
@@ -95,7 +98,8 @@ CREATE TABLE sensor_readings (
   tvoc DOUBLE PRECISION,
   lux DOUBLE PRECISION,
   noise_db DOUBLE PRECISION,
-  temperature DOUBLE PRECISION
+  temperature DOUBLE PRECISION,
+  humidity DOUBLE PRECISION
 );
 
 -- Index utama untuk query histori per device, terurut waktu terbaru
@@ -135,7 +139,7 @@ CREATE TABLE thresholds (
 
 ### 3.5 `alerts`
 
-Dicatat setiap kali backend mendeteksi parameter di luar batas normal (hasil evaluasi `thresholds`, sumber kebenaran untuk notifikasi & histori — terpisah dari LED lokal di device).
+Dicatat setiap kali backend mendeteksi parameter di luar batas normal (hasil evaluasi `thresholds`, sumber kebenaran untuk notifikasi & histori — terpisah dari label status lokal di layar device, lihat `architecture.md` 2.2).
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -162,7 +166,45 @@ CREATE INDEX idx_alerts_device_triggered
   ON alerts (device_id, triggered_at DESC);
 ```
 
-### 3.6 `device_push_tokens`
+### 3.6 `predictions`
+
+Menyimpan hasil klasifikasi status komposit dari model Deep Learning
+(BiGRU, lihat `ml-service/README.md`) — terpisah dari `alerts`, yang
+merupakan hasil evaluasi rule-based per-parameter (`architecture.md`
+4.2a) dan tetap jadi sumber kebenaran untuk notifikasi. Satu baris di
+sini = satu panggilan `POST /predict` yang berhasil, dipicu backend
+setelah 60 baris `sensor_readings` terbaru lengkap (tidak ada kolom
+`NULL` di 9 fitur model) — lihat catatan fail-safe di
+`backend/src/services/ml.js`.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | UUID (PK) | |
+| device_id | UUID (FK -> devices.id) | |
+| time | TIMESTAMPTZ | Waktu prediksi dihitung, default `now()` |
+| label | TEXT | `Baik` / `Rawan` / `Peringatan` / `Bahaya` |
+| class_index | INTEGER | Indeks kelas (0-3), sesuai `metadata.json` label_map di ml-service |
+| probabilities | JSONB | Probabilitas per kelas, misal `{"Baik": 0.0002, "Rawan": 0.9998, ...}` |
+| model_version | TEXT | Nama file model yang dipakai (`ml-service`'s `MODEL_PATH.stem`), untuk telusur balik ke run training tertentu |
+| created_at | TIMESTAMPTZ | default `now()` |
+
+```sql
+CREATE TABLE predictions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id UUID NOT NULL REFERENCES devices(id),
+  time TIMESTAMPTZ NOT NULL DEFAULT now(),
+  label TEXT NOT NULL,
+  class_index INTEGER NOT NULL,
+  probabilities JSONB NOT NULL,
+  model_version TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_predictions_device_time
+  ON predictions (device_id, time DESC);
+```
+
+### 3.7 `device_push_tokens`
 
 Menyimpan token FCM per instalasi app, untuk pengiriman push notification.
 
@@ -225,4 +267,4 @@ GROUP BY day;
 - Kebijakan retensi data lama (belum ditentukan apakah data dihapus/diarsip setelah periode tertentu, mengingat tidak ada fitur retention policy otomatis seperti di TimescaleDB).
 - Tabel `users`/role akan ditambahkan setelah keputusan role difinalkan.
 - Satuan pasti tiap parameter perlu divalidasi ulang terhadap datasheet sensor saat implementasi.
-- Struktur tabel untuk sistem rekomendasi ML (misal tabel `recommendations`) menyusul setelah desain ML difinalkan.
+- ~~Struktur tabel untuk sistem rekomendasi ML~~ — selesai, lihat tabel `predictions` (3.6). Ini menyimpan status komposit dari classifier BiGRU, terpisah dari `alerts`/`thresholds` yang tetap jadi sumber kebenaran rule-based per-parameter.

@@ -1,0 +1,27 @@
+[Unit]
+Description=Udara ML inference service (FastAPI/uvicorn) - internal only
+After=network.target
+
+[Service]
+Type=simple
+User=udara
+Group=udara
+
+# CHANGE THIS to wherever the repo actually lives on the VPS.
+WorkingDirectory=/opt/udara/monitoringkualitasudara/ml-service
+
+# --host 127.0.0.1 is deliberate: this service is never reachable from
+# outside the VPS, only backend/ calls it over localhost (see
+# ml-service/README.md). Do not change this to 0.0.0.0.
+ExecStart=/opt/udara/monitoringkualitasudara/ml-service/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001
+
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/udara/monitoringkualitasudara/ml-service
+
+[Install]
+WantedBy=multi-user.target

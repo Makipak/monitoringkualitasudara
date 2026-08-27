@@ -10,11 +10,6 @@ constexpr uint8_t SHT31_I2C_ADDR = 0x44; // default address, no conflict
 
 bool sht31Init() { return sht31.begin(SHT31_I2C_ADDR); }
 
-bool sht31Read(float &tempCOut) {
-  float temp = sht31.readTemperature();
-  if (isnan(temp)) {
-    return false;
-  }
-  tempCOut = temp;
-  return true;
+bool sht31Read(float &tempCOut, float &humidityPctOut) {
+  return sht31.readBoth(&tempCOut, &humidityPctOut);
 }

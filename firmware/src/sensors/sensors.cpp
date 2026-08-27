@@ -37,6 +37,10 @@ void sensorsRead(SensorReadings &readings) {
   readings.valid[SENSOR_NOISE] = true;
 
   // Display-only — deliberately not part of valid[] (see
-  // include/sensor_data.h warning comment on roomTempC).
-  readings.roomTempValid = sht31Read(readings.roomTempC);
+  // include/sensor_data.h warning comment on roomTempC/roomHumidityPct).
+  readings.sht31Valid = sht31Read(readings.roomTempC, readings.roomHumidityPct);
+}
+
+void sensorsMaintain() {
+  sgp30Update();
 }

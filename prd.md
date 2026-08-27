@@ -9,7 +9,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 ## 2. Tujuan
 
 - Memantau 7 parameter kualitas udara ruangan secara real-time: PM2.5, PM10, NO2, CO2, TVOC, pencahayaan, kebisingan.
-- Memberikan indikasi visual langsung di perangkat (LED) ketika ada parameter di luar batas normal.
+- Memberikan indikasi visual langsung di perangkat (label status pada layar TFT) ketika ada parameter di luar batas normal.
 - Menyediakan dashboard mobile yang menampilkan kondisi terkini dan riwayat data.
 - Mengirim notifikasi ke pengguna saat ada parameter yang menyimpang dari standar.
 - Menyediakan fitur export data harian untuk kebutuhan pelaporan.
@@ -20,7 +20,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 - 1 unit perangkat IoT untuk 1 ruangan.
 - Pengukuran 7 parameter di atas.
 - Tampilan nilai real-time di OLED perangkat.
-- Indikator LED merah saat parameter keluar dari ambang normal.
+- Label status "Normal"/"Tidak Normal" per parameter langsung di layar perangkat saat parameter keluar dari ambang normal (tidak ada indikator LED terpisah — keputusan desain, lihat `architecture.md` 2.2).
 - Koneksi device ke cloud melalui MQTT (HiveMQ Cloud) via internet/WiFi.
 - Backend menyimpan data historis ke TimescaleDB.
 - Mobile app (React Native) menampilkan dashboard, status per parameter, dan riwayat data.
@@ -30,7 +30,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 ### Out of Scope (v1, kandidat pengembangan lanjutan)
 - Multi-device / multi-ruangan.
 - Multi-role user (admin, staff, viewer) — masih didiskusikan, belum difinalkan untuk v1.
-- Sistem rekomendasi berbasis Machine Learning — masih dalam diskusi tim, akan didefinisikan di iterasi berikutnya. **Untuk v1, rekomendasi memakai pendekatan rule-based sederhana** (lihat FR-B5 dan `architecture.md` bagian 4.2a), bukan model ML.
+- Sistem **rekomendasi** berbasis Machine Learning (mengganti/melengkapi evaluasi rule-based itu sendiri) — masih dalam diskusi tim, akan didefinisikan di iterasi berikutnya. **Untuk v1, rekomendasi memakai pendekatan rule-based sederhana** (lihat FR-B5 dan `architecture.md` bagian 4.2a), bukan model ML. (Catatan: ini beda dengan status komposit "Prediksi" di tab AI, yang sudah memakai model BiGRU terlatih sejak sesi ini — lihat `architecture.md` 4.2b. Model itu hanya mengklasifikasi status, bukan menghasilkan rekomendasi tindakan.)
 - Broker MQTT self-hosted (dipilih HiveMQ Cloud managed untuk v1).
 
 ## 4. Pengguna & Stakeholder
@@ -45,9 +45,9 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 |----|-------------|
 | FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (SDS011, MH-Z19B, SGP30, MiCS-4514, BH1750, MAX9814). |
 | FR-D2 | Perangkat menampilkan nilai seluruh parameter di layar OLED/TFT. |
-| FR-D3 | Perangkat menyalakan LED merah ketika satu atau lebih dari 7 parameter resmi melebihi/di bawah batas normal. |
+| FR-D3 | Perangkat menampilkan label "Normal"/"Tidak Normal" per parameter di layar ketika satu atau lebih dari 7 parameter resmi melebihi/di bawah batas normal (tidak ada LED fisik — lihat `architecture.md` 2.2 untuk riwayat keputusan). |
 | FR-D4 | Perangkat mengirim data sensor ke MQTT broker secara berkala melalui koneksi internet. |
-| FR-D5 | Perangkat membaca suhu ruangan (GY-SHT31) dan menyertakannya dalam data yang ditampilkan di layar serta dikirim ke MQTT — suhu bersifat informatif saja, tidak termasuk 7 parameter resmi dan tidak memicu LED alert. |
+| FR-D5 | Perangkat membaca suhu ruangan (GY-SHT31) dan menyertakannya dalam data yang ditampilkan di layar serta dikirim ke MQTT — suhu bersifat informatif saja, tidak termasuk 7 parameter resmi dan tidak memicu label status/alert. |
 
 ### 5.2 Backend
 | ID | Requirement |
@@ -72,7 +72,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 
 - **Konektivitas:** device dan app harus dapat bekerja melalui koneksi internet (bukan LAN-only).
 - **Keamanan:** koneksi MQTT menggunakan TLS, API backend menggunakan autentikasi token.
-- **Reliabilitas:** interval pengiriman data device konsisten (interval final ditentukan saat implementasi, kandidat 30-60 detik).
+- **Reliabilitas:** interval pengiriman data device konsisten. Keputusan final (menggantikan kandidat awal 30-60 detik): device publish ke MQTT pada tick yang sama dengan refresh layar TFT-nya (5 detik, `firmware/include/config.h` `SENSOR_READ_INTERVAL_MS`) — dipilih supaya app tidak pernah menampilkan nilai yang lebih basi daripada layar device sendiri saat sidang/demo.
 - **Skalabilitas:** arsitektur backend disiapkan agar dapat menambah device/ruangan di masa depan meski v1 hanya 1 device.
 - **Maintainability:** dependency dan library yang dipakai harus versi yang didukung aktif (bukan deprecated), sesuai `rule.md`.
 
@@ -96,7 +96,7 @@ Ambang batas normal tiap parameter akan mengacu pada standar resmi (Kemenkes/WHO
 
 - Peran/role pengguna di mobile app.
 - Standar baku mutu final per parameter.
-- Desain sistem rekomendasi ML (data training, letak inference, trigger) — **untuk v1, evaluasi dan rekomendasi memakai rule-based sederhana** (lihat `architecture.md` bagian 4.2a) sebagai solusi sementara karena model ML belum siap. Desain ML tetap didiskusikan dengan tim untuk iterasi berikutnya, sebagai pelengkap atau pengganti rule-based ini.
+- Desain sistem **rekomendasi** ML (data training, letak inference, trigger) — **untuk v1, evaluasi dan rekomendasi (alert) tetap memakai rule-based sederhana** (lihat `architecture.md` bagian 4.2a); ini belum berubah. Desain rekomendasi ML tetap didiskusikan dengan tim untuk iterasi berikutnya, sebagai pelengkap atau pengganti rule-based ini. Terpisah dari ini: status komposit "Prediksi" (klasifikasi Baik/Rawan/Peringatan/Bahaya, bukan rekomendasi tindakan) sudah memakai model BiGRU terlatih sejak sesi ini, gated pada window 60 data sensor lengkap — lihat `architecture.md` 4.2b.
 - Format file export data harian.
 
 ## 10. Success Metrics

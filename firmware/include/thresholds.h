@@ -2,12 +2,12 @@
 #define THRESHOLDS_H
 
 // ---------------------------------------------------------------------------
-// Local (device-side) normal ranges — drives the instant red-LED indicator
-// so it keeps working even when the device is offline from the broker
-// (architecture.md 2.2). This is intentionally separate from the
-// server-side `thresholds` table (schema.md 3.4), which is the source of
-// truth for history/notifications and can be tuned without reflashing
-// firmware.
+// Local (device-side) normal ranges — drives the on-screen Normal/Tidak
+// Normal label (display.cpp) so the device can still flag an out-of-range
+// parameter even when it's offline from the broker (architecture.md 2.2).
+// This is intentionally separate from the server-side `thresholds` table
+// (schema.md 3.4), which is the source of truth for history/notifications
+// and can be tuned without reflashing firmware.
 //
 // PLACEHOLDER VALUES — replace once the official reference (Kemenkes/WHO/
 // ASHRAE, see prd.md section 8) is finalized. Keeping them in one place
@@ -27,7 +27,7 @@ struct Threshold {
 
 constexpr int NUM_THRESHOLDS = 7;
 
-// Order matches LED_PINS[0..6] in config.h — keep in sync.
+// Order matches SensorIndex in sensor_data.h (0..6) — keep in sync.
 constexpr Threshold THRESHOLDS[NUM_THRESHOLDS] = {
     {"pm25", 0.0f, 35.0f},      // ug/m3, placeholder (WHO 24h guideline ~15)
     {"pm10", 0.0f, 70.0f},      // ug/m3, placeholder
@@ -37,5 +37,15 @@ constexpr Threshold THRESHOLDS[NUM_THRESHOLDS] = {
     {"lux", 100.0f, 1000.0f},   // lux, placeholder (patient room comfort range)
     {"noise_db", 0.0f, 55.0f},  // dB, placeholder (hospital ward guideline)
 };
+
+// Used by display.cpp to draw the Normal/Tidak Normal label on the TFT —
+// index is into THRESHOLDS[], 0..6 (SensorIndex in sensor_data.h).
+// Out-of-bounds index fails safe (false, no alert) rather than reading
+// past the array.
+inline bool thresholdOutOfRange(int index, float value) {
+  if (index < 0 || index >= NUM_THRESHOLDS) return false;
+  const Threshold &t = THRESHOLDS[index];
+  return value < t.minValue || value > t.maxValue;
+}
 
 #endif // THRESHOLDS_H

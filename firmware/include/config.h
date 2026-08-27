@@ -12,12 +12,21 @@ constexpr const char *DEVICE_ID = "room-01";
 
 // ---------------------------------------------------------------------------
 // Timing (rule.md 5: interval as a named constant, not a magic number).
-// PRD candidate range is 30-60s; start at 30s and tune after field testing.
+// prd.md's non-functional "Reliabilitas" row originally left the publish
+// interval as an open candidate (30-60s). Decided at implementation: the
+// app must show the same value the on-device screen is showing, not a
+// stale one lagging tens of seconds behind it — a mismatch that would be
+// an obvious question during sidang. So there is no separate, slower
+// publish timer anymore; mqttPublishReadings() rides the same tick as the
+// local read/display refresh below (see main.cpp loop()).
 // ---------------------------------------------------------------------------
-constexpr unsigned long SENSOR_READ_INTERVAL_MS = 5000;     // local read + display refresh
-constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 30000;   // publish to broker
+constexpr unsigned long SENSOR_READ_INTERVAL_MS = 5000;     // local read + display refresh + MQTT publish
 constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
 constexpr unsigned long MQTT_RECONNECT_INTERVAL_MS = 5000;
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 8000; // diagnostic-only: how
+    // long a single WiFi.begin() attempt gets before wifiMaintain() logs
+    // WiFi.status() for debugging; kept below WIFI_RECONNECT_INTERVAL_MS so
+    // it fires once per attempt, before the next retry resets the timer.
 
 // ---------------------------------------------------------------------------
 // I2C bus (shared by SGP30, MiCS-4514, BH1750, GY-SHT31) — ESP32 default
@@ -66,19 +75,11 @@ constexpr uint8_t PIN_TFT_DC = 18;
 constexpr uint8_t PIN_TFT_RST = 19;
 
 // ---------------------------------------------------------------------------
-// LED indicators. architecture.md lists 10x red LED on the BOM, but only 7
-// are wired directly here — one per monitored parameter (thresholds.h
-// order). GPIOs 21/22 (I2C), 16/17 (SDS011 UART1), 32/33 (MH-Z19B UART2),
-// 34 (mic ADC) and 15/4/2/23/18/19 (TFT SPI) are already spoken for,
-// which doesn't leave 10 safe free GPIOs on a bare DevKitC V4. The
-// remaining 3 LEDs need either an I2C GPIO expander (e.g. PCF8574) or a
-// different MCU pin budget — revisit once the physical LED layout/
-// purpose for those 3 is decided (see prd.md Open Questions).
-// GPIO0 is deliberately excluded from this pool (boot-strapping pin).
+// No LED indicator pins here — the earlier per-parameter red-LED design
+// (architecture.md 2.2, prd.md FR-D3) was dropped; out-of-range parameters
+// are shown on the TFT instead (Normal/Tidak Normal label, see
+// firmware/src/display/display.cpp + include/thresholds.h). GPIOs 5, 12,
+// 13, 14, 25, 26, 27 (previously reserved for LEDs) are free.
 // ---------------------------------------------------------------------------
-constexpr uint8_t NUM_LEDS = 7;
-constexpr uint8_t LED_PINS[NUM_LEDS] = {
-    5, 12, 13, 14, 25, 26, 27, // pm25, pm10, no2, co2, tvoc, lux, noise
-};
 
 #endif // CONFIG_H

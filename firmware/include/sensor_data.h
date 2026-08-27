@@ -14,20 +14,26 @@ struct SensorReadings {
   float noiseDb = 0;
 
   // Per-parameter read success, in the same order as thresholds.h /
-  // LED_PINS[0..6]. A sensor that fails to respond keeps its last good
+  // SensorIndex below. A sensor that fails to respond keeps its last good
   // value in the fields above but is marked invalid here so display/
   // and network/ can decide whether to show/publish it.
   bool valid[7] = {false, false, false, false, false, false, false};
 
-  // Room temperature (GY-SHT31, degrees C) — per architecture.md 2.1
-  // "Catatan suhu ruangan" / schema.md 3.4: IS published over MQTT (see
-  // mqtt_pub.cpp, `temperature` field) and persisted by the backend, but
-  // deliberately NOT one of the 7 official parameters — must never be
-  // added to `valid[]`/thresholds.h, must never drive an LED or alert.
-  // Promote it properly (new SensorIndex slot + prd.md FR + schema.md
-  // `thresholds` row) if it needs to become a fully alerted parameter.
+  // Room temperature + humidity (GY-SHT31, degrees C / %RH) — per
+  // architecture.md 2.1 "Catatan suhu ruangan" / schema.md 3.4: both ARE
+  // published over MQTT (see mqtt_pub.cpp, `temperature`/`humidity`
+  // fields) and persisted by the backend, but deliberately NOT among the
+  // 7 official parameters — must never be added to `valid[]`/
+  // thresholds.h, must never drive the on-screen Normal/Tidak Normal
+  // label or an alert. Promote either one properly (new SensorIndex slot
+  // + prd.md FR + schema.md `thresholds` row) if it needs to become a
+  // fully alerted parameter.
+  //
+  // One shared validity flag: both values come from a single atomic
+  // sensor read (sht31Read(), see sensors/sht31.h readBoth()).
   float roomTempC = 0;
-  bool roomTempValid = false;
+  float roomHumidityPct = 0;
+  bool sht31Valid = false;
 };
 
 enum SensorIndex {

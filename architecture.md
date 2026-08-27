@@ -11,11 +11,11 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 │  ESP32 WROOM-32D │ MQTT   │  HiveMQ Cloud      │ MQTT   │  Node.js (Express/     │ REST/  │  React Native    │
 │  + 6 sensor      │ ─────> │  (managed broker,  │ ─────> │  Fastify)              │ WS     │  App             │
 │  + TFT 4.0"      │  TLS   │  TLS 8883)         │        │  + PostgreSQL          │ ─────> │                  │
-│  + LED           │        │                    │        │  (Supabase)            │        │                  │
+│                  │        │                    │        │  (Supabase)            │        │                  │
 └─────────────────┘        └──────────────────┘        └───────────────────────┘        └──────────────────┘
 ```
 
-**Catatan:** TimescaleDB awalnya dipertimbangkan untuk data time-series, tapi tidak dipakai karena (1) volume data proyek ini kecil — 1 device, interval puluhan detik, jauh di bawah skala yang butuh hypertable — dan (2) extension `timescaledb` sudah deprecated di project Supabase yang pakai Postgres 17. PostgreSQL biasa dengan index yang tepat di kolom waktu sudah cukup untuk kebutuhan ini.
+**Catatan:** TimescaleDB awalnya dipertimbangkan untuk data time-series, tapi tidak dipakai karena (1) volume data proyek ini kecil — 1 device, interval hitungan detik (5s, disamakan dengan refresh layar device — lihat 2.2), jauh di bawah skala yang butuh hypertable — dan (2) extension `timescaledb` sudah deprecated di project Supabase yang pakai Postgres 17. PostgreSQL biasa dengan index yang tepat di kolom waktu sudah cukup untuk kebutuhan ini.
 
 ## 2. Device Layer
 
@@ -23,13 +23,14 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 - MCU: ESP32 DevKitC V4 WROOM-32D
 - Sensor: SDS011 (UART1, PM2.5/PM10), MH-Z19B (UART2, CO2), GY-SGP30 (I2C), MiCS-4514 (I2C), BH1750 (I2C), MAX9814 (ADC), GY-SHT31 (I2C, suhu ruangan)
 - Display: **TFT SPI 4.0" driver ST7796, 480x320px** (`TFT_eSPI`) — menggantikan rencana Nextion (UART + software editor terpisah) maupun rencana awal ILI9341 2.8" (dianggap terlalu kecil oleh dosen pembimbing).
-- Indikator: 10x LED merah 5mm
 
 ### 2.2 Tanggung Jawab
 - Membaca seluruh sensor pada interval tetap.
 - Menampilkan nilai di TFT langsung lewat kode (fungsi gambar teks/angka per parameter menggunakan `TFT_eSPI`, tidak ada software desain UI terpisah).
-- Mengevaluasi threshold lokal (rule sederhana) untuk menyalakan LED merah secara instan — ini berjalan independen dari koneksi internet, supaya indikator visual tetap berfungsi walau device sedang offline dari broker.
+- Mengevaluasi threshold lokal (rule sederhana) untuk menampilkan label "Normal"/"Tidak Normal" per parameter langsung di layar TFT — ini berjalan independen dari koneksi internet, supaya indikator visual tetap berfungsi walau device sedang offline dari broker.
 - Publish data ke topic MQTT saat koneksi tersedia.
+
+**Catatan indikator kondisi (bukan LED fisik):** rencana awal (BOM v1) memakai 10x LED merah 5mm sebagai indikator instan per parameter (satu LED per salah satu dari 7 parameter resmi, ditambah 3 cadangan yang belum ada peruntukannya). Diputuskan untuk tidak memakai LED sama sekali — indikator kondisi cukup lewat label "Normal"/"Tidak Normal" per parameter yang sudah tampil di layar TFT (`firmware/src/display/display.cpp`, dievaluasi terhadap `firmware/include/thresholds.h`, sumber logika yang sama yang dulu dipakai LED). Ini menyederhanakan wiring (GPIO 5/12/13/14/25/26/27 yang tadinya dialokasikan untuk LED jadi bebas) dan menghapus kebutuhan modul `led_alert.*` terpisah. `prd.md` FR-D3 sudah diperbarui mengikuti keputusan ini.
 
 **Catatan pemilihan display (ST7796 4.0", bukan Nextion):**
 - **Alasan:** proyek ini memprioritaskan kesederhanaan alur kerja (satu bahasa/tool, langsung coding, tanpa software editor tambahan seperti Nextion Editor) dibanding kemudahan desain visual drag-and-drop.
@@ -39,7 +40,7 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 - Opsi lain yang sempat dipertimbangkan dan tidak dipilih: Nextion Basic/Enhanced/Intelligent Series (perlu software Nextion Editor terpisah dan MCU display sendiri), ESP32 LVGL Smart Display all-in-one (kompleksitas GPIO/processing lebih tinggi, dokumentasi generic/clone kurang jelas), TJC (varian pasar China dari Nextion, dokumentasi kurang lengkap untuk pasar global), ILI9488 3.5" (alternatif SPI TFT lain di kelas ukuran serupa).
 - **Catatan development sementara:** unit TFT 4.0" ST7796 masih dalam pengiriman. Selama menunggu, development firmware dilakukan sementara menggunakan TFT SPI 2.4" (kemungkinan chip ILI9341, satu keluarga dengan ST7796) yang sudah tersedia — interface, pin, dan library (`TFT_eSPI`) sama persis, hanya beda konfigurasi driver (`ILI9341_DRIVER`) dan resolusi (320x240 vs 480x320 pada unit final). Ini bukan perubahan keputusan komponen; ST7796 4.0" tetap komponen resmi untuk perangkat final. Setelah unit 4.0" tiba, konfigurasi driver di `User_Setup.h` diganti ke `ST7796_DRIVER` dan koordinat/skala elemen tampilan disesuaikan dengan resolusi baru.
 
-**Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu dikirim ke MQTT, disimpan ke database, dan ditampilkan di layar TFT maupun mobile app — **namun statusnya tetap sebagai info pendukung, bukan parameter resmi ber-alert**: tidak dievaluasi terhadap threshold, tidak memicu LED/notifikasi, dan tidak dihitung dalam status normal/tidak normal ruangan. Jika ke depan suhu perlu naik status jadi parameter dengan alert penuh, update `prd.md` (tambah FR) dan `thresholds`/evaluasi alert di `schema.md`.
+**Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu dikirim ke MQTT, disimpan ke database, dan ditampilkan di layar TFT maupun mobile app — **namun statusnya tetap sebagai info pendukung, bukan parameter resmi ber-alert**: tidak dievaluasi terhadap threshold, tidak memicu label status/notifikasi, dan tidak dihitung dalam status normal/tidak normal ruangan. Jika ke depan suhu perlu naik status jadi parameter dengan alert penuh, update `prd.md` (tambah FR) dan `thresholds`/evaluasi alert di `schema.md`.
 
 **Catatan penggantian sensor CO2 (MH-Z19B, bukan SCD30):**
 - **Alasan:** sama seperti SDS011 — SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai tenggat waktu proyek. MH-Z19B dipilih karena ready stock dan umum ditemukan di marketplace lokal.
@@ -172,7 +173,15 @@ Karakteristik pendekatan ini:
 - Struktur `alerts` di `schema.md` sudah kompatibel dengan pendekatan ini (kolom `parameter`, `value`, `threshold_id`), sehingga tidak perlu perubahan skema.
 - **Jika nanti sistem ML sudah siap**, rule-based ini bisa tetap dipertahankan sebagai *fallback* cepat (misal saat model ML gagal/timeout) atau digantikan sepenuhnya — keputusan ini menyusul setelah desain ML difinalkan bersama tim.
 
+### 4.2b Composite Status Prediction (`ml-service/`, klasifikasi BiGRU)
 
+Terpisah dari 4.2a di atas (yang tetap berjalan apa adanya, tidak digantikan): tab "Prediksi" di app memakai model Deep Learning terlatih (BiGRU, `ml-service/`) yang sudah diwire ke backend. Model ini **hanya** menghasilkan satu label status komposit (Baik/Rawan/Peringatan/Bahaya) + probabilitas per kelas dari window 60 pembacaan sensor terakhir — bukan prediksi nilai per-parameter maupun tren masa depan, dan bukan pengganti evaluasi rule-based 4.2a untuk alert/notifikasi.
+
+Alur: `backend/src/services/mqtt.js` mengambil 60 baris `sensor_readings` terakhir setelah menyimpan reading baru, memetakan nama kolom DB ke `feature_cols` model (`backend/src/services/ml.js`), lalu memanggil `POST /predict` di `ml-service` (localhost saja, tidak pernah diekspos publik). Hasilnya disimpan di tabel `predictions` (`schema.md` 3.6) dan di-broadcast lewat WebSocket (`{ type: "prediction", prediction }`).
+
+**Fail-safe by design**: jika salah satu dari 60 baris terakhir punya kolom kosong (`NULL`) di salah satu dari 9 fitur yang dibutuhkan model, langkah ini di-skip — tidak ada prediksi yang dihasilkan dari data tidak lengkap. Ini relevan langsung untuk kondisi perangkat saat ini: sensor CO2, cahaya (lux), suhu, dan kelembapan belum terpasang secara fisik (dalam perbaikan), jadi tab Prediksi tetap menampilkan status "belum tersedia" sampai sensor-sensor tersebut aktif kembali — tidak perlu perubahan kode lagi saat itu terjadi.
+
+Risiko nyata yang masih terbuka: satuan `no2` yang dipakai saat training model kemungkinan berbeda dari satuan ppm yang dilaporkan sensor MiCS-4514 live (lihat `ml-service/README.md` "Known placeholders") — perlu diverifikasi terhadap script/data training sebelum benar-benar mempercayai prediksi yang dipengaruhi NO2.
 
 | Method | Endpoint | Fungsi |
 |---|---|---|
@@ -180,6 +189,7 @@ Karakteristik pendekatan ini:
 | GET | `/api/rooms/:deviceId/history?from=&to=` | Data historis dengan rentang waktu |
 | GET | `/api/rooms/:deviceId/export?date=` | Export data harian |
 | GET | `/api/rooms/:deviceId/status` | Status normal/tidak per parameter |
+| GET | `/api/rooms/:deviceId/prediction` | Status komposit terbaru dari classifier BiGRU (4.2b); `{ available: false }` (bukan error) selama window 60 data belum lengkap |
 
 Detail skema request/response akan dituliskan lebih lengkap saat implementasi API, bukan bagian dari dokumen arsitektur ini.
 
@@ -277,7 +287,7 @@ src/
 
 ## 9. Item yang Masih Terbuka
 
-- Desain sistem rekomendasi ML (letak inference, trigger, integrasi ke flow di atas) — menyusul setelah didiskusikan dengan tim. Rule-based (`threshold.js`, bagian 4.2a) dipakai sebagai solusi sementara.
+- Desain sistem **rekomendasi** ML (mengganti/melengkapi `threshold.js` itu sendiri, bukan sekadar status komposit) — menyusul setelah didiskusikan dengan tim. Rule-based (`threshold.js`, bagian 4.2a) tetap dipakai untuk alert/rekomendasi. (Catatan: klasifikasi status komposit terpisah, bagian 4.2b, sudah diimplementasikan — ini bukan yang dimaksud item terbuka ini.)
 - Kebijakan retensi data historis.
 - Role/permission user di app (memengaruhi apakah perlu auth multi-role di backend).
 - Pemilihan `socket.io` vs `ws` final saat implementasi.

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Trained model artifacts - not committed, drop the matching pair onto
+# the VPS manually (see deploy/README.md step 3, ml-service/README.md
+# "Files"). Keep MODEL_PATH/SCALER_PATH in app.py pointed at whichever
+# timestamped pair is actually present.
+*.pkl

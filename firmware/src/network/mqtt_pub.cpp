@@ -12,6 +12,8 @@ namespace {
 WiFiClientSecure tlsClient;
 PubSubClient mqttClient(tlsClient);
 unsigned long lastAttemptMs = 0;
+bool wasConnected = false; // edge-detect disconnected -> connected, same
+                           // pattern as wifi_conn.cpp's wasConnected
 
 char topicBuffer[64];
 
@@ -36,13 +38,21 @@ void mqttInit() {
 
 void mqttMaintain() {
   if (!wifiIsConnected()) {
+    wasConnected = false;
     return; // no point trying MQTT without WiFi
   }
 
   if (mqttClient.connected()) {
+    if (!wasConnected) {
+      Serial.print("[MQTT] Connected to broker, topic: ");
+      Serial.println(topicBuffer);
+      wasConnected = true;
+    }
     mqttClient.loop();
     return;
   }
+
+  wasConnected = false;
 
   unsigned long now = millis();
   if (now - lastAttemptMs < MQTT_RECONNECT_INTERVAL_MS) {
@@ -50,13 +60,19 @@ void mqttMaintain() {
   }
   lastAttemptMs = now;
 
-  mqttClient.connect(DEVICE_ID, MQTT_USERNAME, MQTT_PASSWORD);
+  if (!mqttClient.connect(DEVICE_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
+    // PubSubClient::state() codes: see PubSubClient.h, e.g. -4 timeout,
+    // -2 connect failed, 4 bad credentials, 5 not authorized.
+    Serial.print("[MQTT] Connect failed, state()=");
+    Serial.println(mqttClient.state());
+  }
 }
 
 bool mqttIsConnected() { return mqttClient.connected(); }
 
 bool mqttPublishReadings(const SensorReadings &readings) {
   if (!mqttClient.connected()) {
+    Serial.println("[MQTT] Publish skipped, not connected");
     return false;
   }
 
@@ -73,11 +89,21 @@ bool mqttPublishReadings(const SensorReadings &readings) {
   if (readings.valid[SENSOR_NOISE]) doc["noise_db"] = readings.noiseDb;
   // Published and persisted like the 7 official parameters (architecture.md
   // 2.3/schema.md 3.3), but intentionally excluded from thresholds.h /
-  // valid[] — never gates an LED or alert (see sensor_data.h comment).
-  if (readings.roomTempValid) doc["temperature"] = readings.roomTempC;
+  // valid[] — never gates the on-screen status label or an alert (see
+  // sensor_data.h comment).
+  if (readings.sht31Valid) {
+    doc["temperature"] = readings.roomTempC;
+    doc["humidity"] = readings.roomHumidityPct;
+  }
 
   char payload[256];
   size_t len = serializeJson(doc, payload, sizeof(payload));
-  return mqttClient.publish(topicBuffer, reinterpret_cast<uint8_t *>(payload),
-                             len, false);
+  bool ok = mqttClient.publish(topicBuffer, reinterpret_cast<uint8_t *>(payload),
+                                len, false);
+
+  Serial.print("[MQTT] Publish ");
+  Serial.print(ok ? "OK: " : "FAILED: ");
+  Serial.println(payload);
+
+  return ok;
 }

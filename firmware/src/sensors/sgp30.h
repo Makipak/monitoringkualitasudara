@@ -1,18 +1,16 @@
 #ifndef SENSORS_SGP30_H
 #define SENSORS_SGP30_H
 
-// TVOC (and eCO2, unused — SCD30 already covers CO2) via Sensirion SGP30,
-// I2C. Library: adafruit/Adafruit SGP30 Sensor.
-//
-// Note: SGP30 needs ~15s of warm-up plus periodic calls (roughly every 1s)
-// to its internal baseline algorithm to produce accurate readings. Calling
-// sgp30Read() only once per SENSOR_READ_INTERVAL_MS (config.h) is fine for
-// display purposes but means the very first values after boot are rough
-// estimates — call out this behavior if TVOC accuracy matters for
-// thresholds validation later.
-
 bool sgp30Init();
 
+// Must be called every loop() iteration (non-blocking); internally
+// rate-limited to 1Hz to satisfy SGP30's required constant sampling
+// interval for its dynamic baseline algorithm. Calling IAQmeasure() at
+// any other interval prevents the baseline from converging, causing
+// TVOC to spike then drop back to 0 — this fixes that exact symptom.
+void sgp30Update();
+
+// Returns the most recent TVOC reading captured by sgp30Update().
 bool sgp30Read(float &tvocPpbOut);
 
 #endif // SENSORS_SGP30_H

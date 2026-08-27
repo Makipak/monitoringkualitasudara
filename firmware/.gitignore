@@ -4,5 +4,9 @@
 .vscode/launch.json
 .vscode/ipch
 
+# Ad-hoc `pio device monitor` capture saved at the firmware root
+# (firmware/logs/*.log is already covered by the root .gitignore's *.log)
+serial_log.txt
+
 # Real credentials — copy include/secrets.h.example to include/secrets.h
 include/secrets.h

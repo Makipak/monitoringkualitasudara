@@ -1,0 +1,30 @@
+[Unit]
+Description=Udara backend (MQTT subscriber + REST/WebSocket API)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated non-root user - create it first (see deploy/README.md).
+User=udara
+Group=udara
+
+# CHANGE THIS to wherever the repo actually lives on the VPS.
+WorkingDirectory=/opt/udara/monitoringkualitasudara/backend
+
+# backend/src/config.js already runs `import "dotenv/config"` itself and
+# reads backend/.env relative to the process cwd - WorkingDirectory above
+# is what makes that resolve correctly, no EnvironmentFile= needed here.
+ExecStart=/usr/bin/node src/index.js
+
+Restart=on-failure
+RestartSec=5
+
+# Basic hardening - safe defaults for a single-purpose Node service.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/udara/monitoringkualitasudara/backend
+
+[Install]
+WantedBy=multi-user.target

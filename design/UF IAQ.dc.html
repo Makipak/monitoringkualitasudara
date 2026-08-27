@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#eef0ee; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  a { color:#2E7D32; text-decoration:none; }
+  a:hover { color:#1B5E20; }
+  ::selection { background:#E8F5E9; }
+  .uf-scroll::-webkit-scrollbar { width:0; height:0; }
+  @keyframes ufpulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+</style>
+</helmet>
+
+<div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; background:#eef0ee; font-family:'Inter', system-ui, sans-serif;">
+<div style="position:relative; flex:0 0 auto; width:414px; height:872px; background:#1c1c1e; border-radius:46px; padding:13px 12px; box-shadow:0 20px 44px rgba(20,30,20,0.22);">
+<div style="display:flex; flex-direction:column; height:100%; background:#ffffff; color:#1c1c1e; font-family:'Inter', system-ui, sans-serif; overflow:hidden; border-radius:34px;">
+  <div style="flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 22px 4px; background:#ffffff;">
+    <span style="font-size:13px; font-weight:700; letter-spacing:0.01em;">9:41</span>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="#1c1c1e"><rect x="0" y="7" width="3" height="4" rx="0.5"></rect><rect x="4.3" y="5" width="3" height="6" rx="0.5"></rect><rect x="8.6" y="2.5" width="3" height="8.5" rx="0.5"></rect><rect x="12.9" y="0" width="3" height="11" rx="0.5"></rect></svg>
+      <svg width="15" height="11" viewBox="0 0 24 18" fill="none" stroke="#1c1c1e" stroke-width="2.2" stroke-linecap="round"><path d="M2 6.5a15 15 0 0 1 20 0"></path><path d="M5.5 10.5a10 10 0 0 1 13 0"></path><path d="M9 14.5a5 5 0 0 1 6 0"></path><path d="M12 18h.01"></path></svg>
+      <div style="display:flex; align-items:center; gap:2px;">
+        <div style="width:20px; height:10px; border:1.5px solid #1c1c1e; border-radius:2.5px; padding:1.5px;"><div style="width:72%; height:100%; background:#1c1c1e; border-radius:1px;"></div></div>
+        <div style="width:1.5px; height:4px; background:#1c1c1e; border-radius:1px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto; padding:14px 18px 10px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+        <div>
+          <div style="font-size:24px; font-weight:800; letter-spacing:-0.02em; line-height:1; color:#1c1c1e;">UF IAQ</div>
+          <div style="font-size:11px; font-weight:500; color:#7d8580; margin-top:5px;">Sistem Prediksi Kualitas Udara Dalam Ruang</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
+          <div style="position:relative; width:36px; height:36px; border-radius:12px; background:#f0f1ef; display:flex; align-items:center; justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+            <span style="position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#FF8F00; border:1.5px solid #fff;"></span>
+          </div>
+          <div style="width:36px; height:36px; border-radius:12px; background:#4CAF50; display:flex; align-items:center; justify-content:center;">
+            <svg width="15" height="11" viewBox="0 0 24 18" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"><path d="M2 6.5a15 15 0 0 1 20 0"></path><path d="M5.5 10.5a10 10 0 0 1 13 0"></path><path d="M9 14.5a5 5 0 0 1 6 0"></path><path d="M12 18h.01"></path></svg>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-top:8px;">
+        <span style="width:6px; height:6px; border-radius:50%; background:#4CAF50; animation:ufpulse 2s ease-in-out infinite;"></span>
+        <span style="font-size:11px; font-weight:600; color:#2E7D32;">Terhubung</span>
+        <span style="font-size:11px; color:#98A2A0;">· Diperbarui {{ lastUpdate }}</span>
+      </div>
+    </div>
+
+    <div class="uf-scroll" style="flex:1; overflow-y:auto; padding:0 18px 24px;">
+
+      <div style="background:#E8F5E9; border-radius:20px; padding:18px;">
+        <div style="font-size:10.5px; font-weight:700; letter-spacing:0.06em; color:#2E7D32;">STATUS KUALITAS UDARA</div>
+        <div style="display:flex; align-items:center; gap:18px; margin-top:14px;">
+          <div style="position:relative; flex:0 0 auto; width:104px; height:104px;">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#c8e0ca" stroke-width="9"></circle>
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#2E7D32" stroke-width="9" stroke-linecap="round" stroke-dasharray="{{ gaugeDash }}" transform="rotate(-90 52 52)"></circle>
+            </svg>
+            <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div style="font-size:32px; font-weight:800; line-height:1; letter-spacing:-0.02em; color:#1c1c1e;">{{ iaq }}</div>
+              <div style="font-size:8.5px; font-weight:700; letter-spacing:0.06em; color:#6b7570; margin-top:2px;">SKOR IAQ</div>
+            </div>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:10px; font-weight:600; color:#4d6a50;">STATUS SAAT INI</div>
+            <div style="font-size:26px; font-weight:800; letter-spacing:-0.02em; line-height:1.1; color:#1B5E20; margin-top:2px;">{{ iaqLabel }}</div>
+            <div style="font-size:11px; color:#4d6a50; margin-top:5px;">Aman untuk 30 menit ke depan</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+              <span style="display:inline-flex; align-items:center; padding:6px 12px; border-radius:999px; background:#2E7D32; color:#fff; font-size:10.5px; font-weight:700;">Prediksi AI</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid rgba(46,125,50,0.16);">
+          <span style="font-size:10.5px; font-weight:600; color:#4d6a50;">Keyakinan Model</span>
+          <span style="font-size:12px; font-weight:800; color:#1B5E20;">94.2%</span>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:22px;">
+        <h2 style="margin:0; font-size:15px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">Pemantauan Real-Time</h2>
+        <span style="font-size:10px; font-weight:700; color:#98A2A0; letter-spacing:0.03em;">5 PARAMETER</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+        <sc-for list="{{ params }}" as="p" hint-placeholder-count="5">
+          <div role="button" tabindex="0" onClick="{{ p.open }}" style="border-radius:16px; background:#f7f8f6; padding:14px; cursor:pointer;" style-hover="background:#eff1ee;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="width:36px; height:36px; border-radius:11px; background:#ffffff; display:flex; align-items:center; justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ p.icon }}"></path></svg>
+              </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#98A2A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+            <div style="font-size:12.5px; font-weight:700; margin-top:10px; color:#1c1c1e;">{{ p.name }}</div>
+            <div style="display:flex; align-items:baseline; gap:4px; margin-top:2px;">
+              <span style="font-size:20px; font-weight:800; letter-spacing:-0.02em; line-height:1; color:#1c1c1e;">{{ p.value }}</span>
+              <span style="font-size:10.5px; font-weight:500; color:#7d8580;">{{ p.unit }}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:5px; margin-top:8px;">
+              <span style="width:6px; height:6px; border-radius:50%; background:{{ p.dot }};"></span>
+              <span style="font-size:10px; font-weight:700; color:{{ p.fg }};">{{ p.status }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <h2 style="margin:22px 0 0; font-size:15px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">Rekomendasi Cerdas</h2>
+      <div style="margin-top:12px; border-radius:16px; background:#F1F8F1; padding:14px; display:flex; gap:10px; align-items:flex-start;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto; margin-top:1px;"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg>
+        <span style="font-size:12px; line-height:1.5; color:#33402f; text-wrap:pretty;">{{ mainRecText }}</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+        <div style="border-radius:16px; background:#f7f8f6; padding:14px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg>
+          <div style="font-size:11.5px; font-weight:700; margin-top:8px; color:#1c1c1e;">Emisi Rendah</div>
+          <div style="font-size:10px; color:#7d8580; margin-top:3px; line-height:1.4;">Ruangan ini menggunakan material emisi rendah</div>
+        </div>
+        <div style="border-radius:16px; background:#f7f8f6; padding:14px;">
+          <svg width="17" height="17" viewBox="0 0 24 18" fill="none" stroke="#2E7D32" stroke-width="2.2" stroke-linecap="round"><path d="M2 6.5a15 15 0 0 1 20 0"></path><path d="M5.5 10.5a10 10 0 0 1 13 0"></path><path d="M9 14.5a5 5 0 0 1 6 0"></path><path d="M12 18h.01"></path></svg>
+          <div style="font-size:11.5px; font-weight:700; margin-top:8px; color:#1c1c1e;">Perangkat IoT</div>
+          <div style="font-size:10px; color:#7d8580; margin-top:3px; line-height:1.4;"><span style="font-weight:800; color:#1c1c1e;">5/5</span> Terhubung</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto; padding:12px 18px 4px; display:flex; align-items:center; justify-content:space-between;">
+      <button onClick="{{ goHome }}" style="width:34px; height:34px; border-radius:11px; background:#f0f1ef; border:0; display:flex; align-items:center; justify-content:center; cursor:pointer;" style-hover="background:#e6e7e4;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <div style="font-size:15px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">{{ sel.name }} Detail</div>
+      <div style="width:34px; height:34px; border-radius:11px; background:#f0f1ef; display:flex; align-items:center; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-5M12 8h.01"></path></svg>
+      </div>
+    </div>
+
+    <div class="uf-scroll" style="flex:1; overflow-y:auto; padding:10px 18px 24px;">
+      <div style="border-radius:18px; background:{{ sel.bg }}; padding:16px; display:flex; align-items:center; gap:14px;">
+        <div style="width:44px; height:44px; border-radius:13px; background:#ffffff; display:flex; align-items:center; justify-content:center; flex:0 0 auto;">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ sel.icon }}"></path></svg>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700; color:#1c1c1e;">{{ sel.name }}</div>
+          <div style="font-size:10.5px; color:#6b756e;">{{ sel.fullName }}</div>
+        </div>
+        <div style="text-align:right; flex:0 0 auto;">
+          <div style="display:flex; align-items:baseline; gap:4px; justify-content:flex-end;">
+            <span style="font-size:22px; font-weight:800; letter-spacing:-0.02em; color:#1c1c1e;">{{ sel.value }}</span>
+            <span style="font-size:11px; color:#6b756e;">{{ sel.unit }}</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:-6px;">
+        <span style="display:inline-flex; align-items:center; padding:5px 11px; border-radius:999px; background:{{ sel.dot }}; color:#ffffff; font-size:10px; font-weight:700; margin-top:-28px;">{{ sel.status }}</span>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-top:16px; overflow-x:auto;">
+        <sc-for list="{{ detailRanges }}" as="r" hint-placeholder-count="6">
+          <button onClick="{{ r.pick }}" style="white-space:nowrap; padding:8px 13px; border-radius:999px; font-family:inherit; font-size:11px; font-weight:700; border:0; background:{{ r.bg }}; color:{{ r.fg }}; cursor:pointer;" style-hover="opacity:.85;">{{ r.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="border-radius:18px; background:#f7f8f6; padding:14px 10px 10px; margin-top:12px;">
+        <svg viewBox="0 0 326 178" width="100%" height="178" fill="none">
+          <rect x="30" y="{{ band.y }}" width="296" height="{{ band.h }}" fill="rgba(76,175,80,0.12)" rx="4"></rect>
+          <line x1="30" y1="30" x2="326" y2="30" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="30" y1="75" x2="326" y2="75" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="30" y1="120" x2="326" y2="120" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="30" y1="152" x2="326" y2="152" stroke="#cfd2cc" stroke-width="1.3"></line>
+          <path d="{{ detailArea }}" fill="{{ sel.areaFill }}"></path>
+          <path d="{{ detailPath }}" stroke="{{ sel.dot }}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"></path>
+          <sc-for list="{{ detailDots }}" as="d" hint-placeholder-count="8">
+            <circle cx="{{ d.x }}" cy="{{ d.y }}" r="3" fill="#ffffff" stroke="{{ d.color }}" stroke-width="2"></circle>
+          </sc-for>
+          <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="4">
+            <text x="0" y="{{ t.y }}" font-family="Inter" font-size="9" font-weight="600" fill="#98A2A0">{{ t.label }}</text>
+          </sc-for>
+          <sc-for list="{{ xTicks }}" as="t" hint-placeholder-count="5">
+            <text x="{{ t.x }}" y="168" font-family="Inter" font-size="9" font-weight="600" fill="#98A2A0">{{ t.label }}</text>
+          </sc-for>
+        </svg>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Statistik Ringkasan</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="6">
+          <div style="border-radius:14px; background:#f7f8f6; padding:12px 10px;">
+            <div style="font-size:9px; font-weight:700; letter-spacing:0.04em; color:#98A2A0;">{{ s.label }}</div>
+            <div style="font-size:17px; font-weight:800; letter-spacing:-0.02em; margin-top:5px; color:{{ s.color }};">{{ s.value }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Tentang {{ sel.name }}</h2>
+      <p style="margin:9px 0 0; font-size:12px; line-height:1.55; color:#4d564f; text-wrap:pretty;">{{ sel.about }}</p>
+
+      <div style="margin-top:16px; border-radius:16px; background:#f7f8f6; padding:14px; display:flex; gap:10px; align-items:flex-start;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto; margin-top:1px;"><path d="M12 2a7 7 0 0 0-7 7c0 3 1.5 4.5 2.5 6h9c1-1.5 2.5-3 2.5-6a7 7 0 0 0-7-7Z"></path><path d="M9 21h6M10 18h4"></path></svg>
+        <div>
+          <div style="font-size:11.5px; font-weight:700; color:#1c1c1e;">Dampak Kesehatan</div>
+          <div style="font-size:11.5px; color:#4d564f; margin-top:3px; line-height:1.5;">{{ sel.healthImpact }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; border-radius:16px; background:#f7f8f6; padding:14px;">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto; margin-top:1px;"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg>
+          <div style="font-size:11.5px; font-weight:700; color:#1c1c1e;">Rekomendasi</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:7px; margin-top:9px; padding-left:27px;">
+          <sc-for list="{{ sel.recActions }}" as="a" hint-placeholder-count="3">
+            <div style="display:flex; gap:7px; align-items:flex-start;">
+              <span style="width:4px; height:4px; border-radius:50%; background:#7d8580; margin-top:6px; flex:0 0 auto;"></span>
+              <span style="font-size:11.5px; color:#4d564f; line-height:1.5;">{{ a }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPrediction }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto; padding:14px 18px 6px; text-align:center;">
+      <div style="font-size:16px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">Prediksi</div>
+    </div>
+
+    <div class="uf-scroll" style="flex:1; overflow-y:auto; padding:6px 18px 24px;">
+      <div style="border-radius:18px; background:#E8F5E9; padding:16px;">
+        <div style="display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:999px; background:#ffffff;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"></path></svg>
+          <span style="font-size:10.5px; font-weight:700; color:#2E7D32;">Deep Learning Prediction</span>
+        </div>
+        <div style="font-size:11px; color:#4d6a50; margin-top:12px;">Prediksi (30 Menit ke Depan)</div>
+        <div style="font-size:30px; font-weight:800; letter-spacing:-0.02em; color:#1B5E20; margin-top:2px;">{{ predStatusLabel }}</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px;">
+          <span style="font-size:10.5px; font-weight:600; color:#4d6a50;">Keyakinan Model</span>
+          <span style="font-size:12px; font-weight:800; color:#1B5E20;">94.2%</span>
+        </div>
+        <div style="height:8px; border-radius:999px; background:rgba(46,125,50,0.15); margin-top:8px;">
+          <div style="height:8px; width:94.2%; border-radius:999px; background:linear-gradient(90deg,#2E7D32,#FF8F00);"></div>
+        </div>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Skor Prediksi</h2>
+      <div style="display:flex; align-items:center; gap:18px; margin-top:12px;">
+        <div style="position:relative; flex:0 0 auto; width:96px; height:96px;">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none" stroke="#eceeea" stroke-width="9"></circle>
+            <circle cx="48" cy="48" r="40" fill="none" stroke="{{ predScoreColor }}" stroke-width="9" stroke-linecap="round" stroke-dasharray="{{ predDash }}" transform="rotate(-90 48 48)"></circle>
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="font-size:24px; font-weight:800; line-height:1; color:#1c1c1e;">{{ predScore }}</div>
+            <div style="font-size:8.5px; font-weight:600; color:#98A2A0;">/100</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <sc-for list="{{ predLegend }}" as="l" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span style="width:9px; height:9px; border-radius:50%; background:{{ l.color }}; flex:0 0 auto;"></span>
+              <span style="font-size:11px; color:#4d564f;">{{ l.label }} <span style="color:#98A2A0;">({{ l.range }})</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Tren IAQ Terprediksi</h2>
+      <div style="border-radius:18px; background:#f7f8f6; padding:14px 10px 10px; margin-top:10px;">
+        <svg viewBox="0 0 326 150" width="100%" height="150" fill="none">
+          <line x1="0" y1="38" x2="326" y2="38" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="76" x2="326" y2="76" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="114" x2="326" y2="114" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="132" x2="326" y2="132" stroke="#cfd2cc" stroke-width="1.3"></line>
+          <path d="{{ histPath }}" stroke="#2E7D32" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"></path>
+          <path d="{{ futPath }}" stroke="#FF8F00" stroke-width="2.6" stroke-dasharray="6 4" stroke-linejoin="round" stroke-linecap="round"></path>
+        </svg>
+        <div style="display:flex; gap:16px; margin-top:6px; padding-top:9px; border-top:1px solid #e6e8e4;">
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:14px; height:3px; border-radius:2px; background:#2E7D32;"></span><span style="font-size:10px; color:#6b756e;">Aktual</span></div>
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:14px; height:3px; border-radius:2px; background:#FF8F00;"></span><span style="font-size:10px; color:#6b756e;">Prediksi</span></div>
+        </div>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Nilai Parameter Terprediksi</h2>
+      <div style="margin-top:10px; border-radius:16px; background:#f7f8f6; padding:4px 12px;">
+        <sc-for list="{{ predictions }}" as="p" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid #e6e8e4;" style-last-child="border-bottom:0;">
+            <div style="width:30px; height:30px; border-radius:9px; background:#ffffff; display:flex; align-items:center; justify-content:center; flex:0 0 auto;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ p.icon }}"></path></svg>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:#1c1c1e; flex:1;">{{ p.name }}</span>
+            <span style="font-size:12px; font-weight:700; color:#1c1c1e;">{{ p.predicted }} <span style="font-weight:500; color:#98A2A0; font-size:10.5px;">{{ p.unit }}</span></span>
+            <span style="font-size:9.5px; font-weight:700; padding:4px 9px; border-radius:999px; background:{{ p.bg }}; color:{{ p.fg }};">{{ p.dirLabel }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-top:16px; border-radius:16px; background:#FFF3E0; padding:14px; display:flex; gap:10px; align-items:flex-start;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A4B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.2 4 2.3 5.2.5.6.7 1 .7 1.8h8c0-.8.2-1.2.7-1.8C17.8 13 19 11.5 19 9a7 7 0 0 0-7-7Z"></path></svg>
+        <div>
+          <div style="font-size:11.5px; font-weight:700; color:#8A4B00;">Rekomendasi AI</div>
+          <div style="font-size:11.5px; color:#5c3d17; margin-top:3px; line-height:1.5; text-wrap:pretty;">{{ aiRecommendation }}</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto; padding:14px 18px 6px; text-align:center;">
+      <div style="font-size:16px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">Riwayat</div>
+    </div>
+
+    <div class="uf-scroll" style="flex:1; overflow-y:auto; padding:6px 18px 24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; background:#f0f1ef;">
+        <div style="display:flex; align-items:center; gap:9px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+          <span style="font-size:12px; font-weight:600; color:#1c1c1e;">18 Mei – 24 Mei 2025</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#98A2A0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-top:12px; overflow-x:auto;">
+        <sc-for list="{{ histParams }}" as="f" hint-placeholder-count="6">
+          <button onClick="{{ f.pick }}" style="white-space:nowrap; padding:8px 13px; border-radius:999px; font-family:inherit; font-size:11px; font-weight:700; border:0; background:{{ f.bg }}; color:{{ f.fg }}; cursor:pointer;" style-hover="opacity:.85;">{{ f.label }}</button>
+        </sc-for>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Ringkasan Skor IAQ</h2>
+      <div style="border-radius:18px; background:#f7f8f6; padding:14px 10px 10px; margin-top:10px;">
+        <svg viewBox="0 0 326 130" width="100%" height="130" fill="none">
+          <line x1="0" y1="30" x2="326" y2="30" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="65" x2="326" y2="65" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="100" x2="326" y2="100" stroke="#e6e8e4" stroke-width="1"></line>
+          <line x1="0" y1="112" x2="326" y2="112" stroke="#cfd2cc" stroke-width="1.3"></line>
+          <path d="{{ histAreaPath }}" fill="rgba(76,175,80,0.10)"></path>
+          <path d="{{ histLinePath }}" stroke="#2E7D32" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path>
+          <sc-for list="{{ histXTicks }}" as="t" hint-placeholder-count="7">
+            <text x="{{ t.x }}" y="126" font-family="Inter" font-size="9" font-weight="600" fill="#98A2A0">{{ t.label }}</text>
+          </sc-for>
+        </svg>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:16px;">
+        <sc-for list="{{ histSummary }}" as="s" hint-placeholder-count="4">
+          <div style="border-radius:14px; background:#f7f8f6; padding:11px 6px; text-align:center;">
+            <div style="font-size:8px; font-weight:700; letter-spacing:0.03em; color:#98A2A0;">{{ s.label }}</div>
+            <div style="font-size:16px; font-weight:800; letter-spacing:-0.02em; margin-top:5px; color:{{ s.color }};">{{ s.value }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <h2 style="margin:20px 0 0; font-size:14px; font-weight:800; color:#1c1c1e;">Riwayat Pemantauan</h2>
+      <div style="margin-top:10px; border-radius:16px; background:#f7f8f6; padding:4px 12px;">
+        <sc-for list="{{ histRows }}" as="r" hint-placeholder-count="6">
+          <div>
+            <div role="button" tabindex="0" onClick="{{ r.toggle }}" style="display:flex; align-items:center; gap:11px; padding:12px 0; border-bottom:1px solid #e6e8e4; cursor:pointer;" style-hover="opacity:.85;">
+              <span style="width:9px; height:9px; border-radius:50%; background:{{ r.dot }}; flex:0 0 auto;"></span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11.5px; font-weight:600; color:#1c1c1e;">{{ r.dateLabel }}</div>
+                <div style="font-size:10.5px; color:#98A2A0; margin-top:2px;">Skor IAQ: {{ r.iaq }}</div>
+              </div>
+              <span style="font-size:9.5px; font-weight:700; padding:4px 9px; border-radius:999px; background:{{ r.bg }}; color:{{ r.fg }};">{{ r.status }}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#98A2A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+            <sc-if value="{{ r.open }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:2px 0 13px 20px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+                <sc-for list="{{ r.detail }}" as="d" hint-placeholder-count="6">
+                  <div>
+                    <div style="font-size:9px; font-weight:700; color:#98A2A0;">{{ d.label }}</div>
+                    <div style="font-size:12.5px; font-weight:700; margin-top:3px; color:#1c1c1e;">{{ d.value }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto; padding:14px 18px 6px; text-align:center;">
+      <div style="font-size:16px; font-weight:800; letter-spacing:-0.01em; color:#1c1c1e;">Tentang</div>
+    </div>
+
+    <div class="uf-scroll" style="flex:1; overflow-y:auto; padding:10px 18px 24px;">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+        <div style="width:64px; height:64px; border-radius:18px; background:#E8F5E9; display:flex; align-items:center; justify-content:center;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg>
+        </div>
+        <div style="font-size:24px; font-weight:800; letter-spacing:-0.02em; margin-top:14px; color:#1c1c1e;">UF IAQ</div>
+        <div style="font-size:12px; font-weight:600; color:#4d564f; margin-top:4px;">Sistem Prediksi Kualitas Udara Dalam Ruang</div>
+        <p style="margin:14px 0 0; font-size:11.5px; line-height:1.6; color:#6b756e; text-wrap:pretty;">UF IAQ adalah platform pemantauan lingkungan cerdas yang menggabungkan teknologi IoT dan Deep Learning untuk mendukung lingkungan pemulihan pasien yang sehat.</p>
+      </div>
+
+      <div style="margin-top:22px; border-radius:16px; background:#f7f8f6; padding:4px 14px;">
+        <sc-for list="{{ aboutRows }}" as="a" hint-placeholder-count="5">
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 0; border-bottom:1px solid #e6e8e4;">
+            <div style="width:34px; height:34px; border-radius:11px; background:#E8F5E9; display:flex; align-items:center; justify-content:center; flex:0 0 auto;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ a.icon }}"></path></svg>
+            </div>
+            <div style="min-width:0;">
+              <div style="font-size:12px; font-weight:700; color:#1c1c1e;">{{ a.title }}</div>
+              <div style="font-size:11px; color:#6b756e; margin-top:3px; line-height:1.45; text-wrap:pretty;">{{ a.body }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="flex:0 0 auto; display:grid; grid-template-columns:1fr 1fr 1fr 1fr; padding:8px 12px 10px; background:#ffffff; border-top:1px solid #eef0ee;">
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+      <button onClick="{{ n.go }}" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px 4px; border-radius:14px; min-height:56px; border:0; background:{{ n.bg }}; color:{{ n.fg }}; font-family:inherit; cursor:pointer;" style-hover="background:#f0f1ef;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.icon }}"></path></svg>
+        <span style="font-size:10px; font-weight:700; letter-spacing:0.01em;">{{ n.label }}</span>
+      </button>
+    </sc-for>
+  </div>
+</div>
+</div>
+</div>
+</helmet>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:462,&quot;height&quot;:920},&quot;iaqScore&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:82,&quot;min&quot;:0,&quot;max&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Data&quot;,&quot;unit&quot;:&quot; skor&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'home', param: 'no2', detailRange: '6 Jam', histRow: null, histParam: 'Semua' };
+
+  get defs() {
+    return [
+      { key:'no2', name:'NO₂', fullName:'Nitrogen Dioksida', unit:'µg/m³', value:'18.4', num:18.4, status:'Baik', trend:-4.2, spread:5, dec:1, safe:'0 – 40 µg/m³', safeLo:0, safeHi:40,
+        icon:'M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.6 4.6A2 2 0 1 1 11 8H2',
+        about:'Nitrogen dioksida (NO₂) adalah gas pencemar yang dapat mengiritasi sistem pernapasan dan menurunkan kualitas udara dalam ruang. Level ideal berada di bawah 40 µg/m³.',
+        healthImpact:'Konsentrasi rendah. Tidak ada dampak kesehatan signifikan pada level saat ini.' },
+      { key:'co2', name:'CO₂', fullName:'Karbon Dioksida', unit:'ppm', value:'780', num:780, status:'Baik', trend:1.8, spread:120, dec:0, safe:'400 – 1000 ppm', safeLo:400, safeHi:1000,
+        icon:'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z',
+        about:'Karbon dioksida (CO₂) menumpuk saat ventilasi kurang memadai dan menjadi indikator utama sirkulasi udara dalam ruang.',
+        healthImpact:'Level normal. Sirkulasi udara masih memadai untuk kenyamanan pasien.' },
+      { key:'tvoc', name:'TVOC', fullName:'Total Volatile Organic Compounds', unit:'ppb', value:'145', num:145, status:'Perhatian', trend:6.1, spread:44, dec:0, safe:'0 – 120 ppb', safeLo:0, safeHi:120,
+        icon:'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+        about:'TVOC mengukur total senyawa organik yang mudah menguap dari material bangunan, cat, dan produk pembersih.',
+        healthImpact:'Sedikit di atas rentang aman. Dapat menyebabkan iritasi ringan bila terpapar lama.' },
+      { key:'light', name:'Cahaya', fullName:'Intensitas Cahaya', unit:'lux', value:'320', num:320, status:'Baik', trend:0.4, spread:60, dec:0, safe:'200 – 500 lux', safeLo:200, safeHi:500,
+        icon:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+        about:'Intensitas cahaya yang tepat mendukung kenyamanan visual dan ritme sirkadian pasien dalam ruang pemulihan.',
+        healthImpact:'Berada pada rentang nyaman untuk aktivitas dan istirahat.' },
+      { key:'noise', name:'Kebisingan', fullName:'Tingkat Kebisingan', unit:'dB', value:'42', num:42, status:'Baik', trend:-1.1, spread:9, dec:0, safe:'0 – 50 dB', safeLo:0, safeHi:50,
+        icon:'M11 5 6 9H2v6h4l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7',
+        about:'Tingkat kebisingan yang rendah penting untuk mendukung istirahat dan pemulihan pasien secara optimal.',
+        healthImpact:'Level tenang, mendukung kenyamanan dan kualitas istirahat pasien.' }
+    ];
+  }
+
+  tone(status) {
+    const map = {
+      'Baik':      { fg:'#1B5E20', bg:'#E8F5E9', dot:'#4CAF50', area:'rgba(76,175,80,0.14)' },
+      'Perhatian': { fg:'#92610A', bg:'#FFF8E1', dot:'#FFB74D', area:'rgba(255,183,77,0.18)' },
+      'Sedang':    { fg:'#8A4B00', bg:'#FFF3E0', dot:'#FF8F00', area:'rgba(255,143,0,0.16)' },
+      'Tidak Aman':{ fg:'#B71C1C', bg:'#FDECEA', dot:'#E53935', area:'rgba(229,57,53,0.14)' }
+    };
+    return map[status] || map['Baik'];
+  }
+
+  series(key) {
+    this._cache = this._cache || {};
+    if (this._cache[key]) return this._cache[key];
+    const d = this.defs.find(p => p.key === key);
+    let s = 0;
+    for (let i = 0; i < key.length; i++) s = (s * 31 + key.charCodeAt(i)) % 100000;
+    const out = [];
+    for (let i = 0; i < 24; i++) {
+      s = (s * 1103515245 + 12345) % 2147483648;
+      const r = s / 2147483648 - 0.5;
+      out.push(d.num + r * d.spread + Math.sin(i / 3.1) * d.spread * 0.22);
+    }
+    out[23] = d.num;
+    this._cache[key] = out;
+    return out;
+  }
+
+  path(vals, x0, x1, yTop, yBot, close) {
+    const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    const span = (max - min) || 1;
+    const pts = vals.map((v, i) => {
+      const x = x0 + (x1 - x0) * (i / (vals.length - 1));
+      const y = yBot - ((v - min) / span) * (yBot - yTop);
+      return [x, y];
+    });
+    let d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    if (close) d += ' L' + x1 + ' ' + yBot + ' L' + x0 + ' ' + yBot + ' Z';
+    return { d: d, pts: pts, min: min, max: max };
+  }
+
+  times(n, stepMin) {
+    const out = [];
+    let h = 14, m = 32;
+    for (let i = 0; i < n; i++) {
+      out.unshift((h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m);
+      m -= stepMin;
+      while (m < 0) { m += 60; h = (h + 23) % 24; }
+    }
+    return out;
+  }
+
+  fmt(v, dec) { return dec ? v.toFixed(dec) : Math.round(v).toString(); }
+
+  statusOf(def, v) {
+    if (v > def.safeHi || v < def.safeLo) return v > def.safeHi * 1.2 ? 'Tidak Aman' : 'Sedang';
+    if (v > def.safeHi * 0.9) return 'Perhatian';
+    return 'Baik';
+  }
+
+  renderVals() {
+    const st = this.state, self = this;
+    const screen = st.screen;
+    const iaq = Math.max(0, Math.min(100, this.props.iaqScore ?? 82));
+    const C = 2 * Math.PI * 44;
+    const C2 = 2 * Math.PI * 40;
+    const green = '#2E7D32', ink = '#1c1c1e', mute = '#98A2A0';
+
+    const params = this.defs.map(d => {
+      const t = self.tone(d.status);
+      return {
+        key: d.key, name: d.name, unit: d.unit, value: d.value, icon: d.icon,
+        status: d.status, fg: t.fg, bg: t.bg, dot: t.dot,
+        open: () => self.setState({ screen: 'detail', param: d.key })
+      };
+    });
+
+    const sel0 = this.defs.find(p => p.key === st.param) || this.defs[0];
+    const selTone = this.tone(sel0.status);
+    const rangeCfg = { '1 Jam': { n:5, step:15 }, '6 Jam': { n:13, step:30 }, '12 Jam': { n:13, step:60 }, '24 Jam': { n:24, step:60 }, '7 Hari': { n:15, step:720 }, 'Kustom': { n:9, step:45 } }[st.detailRange] || { n:13, step:30 };
+    const vals = this.series(sel0.key).slice(-rangeCfg.n);
+    const nPts = vals.length;
+    const chart = this.path(vals, 34, 320, 20, 148, false);
+    const area = this.path(vals, 34, 320, 20, 148, true);
+    const span = (chart.max - chart.min) || 1;
+    const yOf = v => 148 - ((v - chart.min) / span) * 128;
+    const bandTop = Math.max(14, Math.min(148, yOf(sel0.safeHi)));
+    const bandBot = Math.max(14, Math.min(148, yOf(sel0.safeLo)));
+
+    const labels = rangeCfg.step >= 720
+      ? (function (n, perDay) {
+          const out = []; let d = 23, mo = 8;
+          for (let i = 0; i < n; i++) {
+            out.unshift((d < 10 ? '0' : '') + d + '/0' + mo);
+            if ((i + 1) % perDay === 0) { d -= 1; if (d < 1) { d = 31; mo -= 1; } }
+          }
+          return out;
+        })(nPts, Math.max(1, Math.round(1440 / rangeCfg.step)))
+      : this.times(nPts, rangeCfg.step);
+    const dotEvery = Math.max(1, Math.round(nPts / 6));
+    const detailDots = chart.pts.filter((p, i) => i % dotEvery === 0 || i === nPts - 1).map(p => ({ x: p[0].toFixed(1), y: p[1].toFixed(1), color: selTone.dot }));
+    const yTicks = [0, 1, 2, 3].map(i => ({ y: 20 + i * 42.6, label: self.fmt(chart.max - (span * i / 3), sel0.dec) }));
+    const xTicks = [0, 0.25, 0.5, 0.75, 1].map((f, k) => {
+      const i = Math.round(f * (nPts - 1));
+      return { x: (34 + (320 - 34) * (i / (nPts - 1)) - (k === 4 ? 22 : k === 0 ? 0 : 11)).toFixed(0), label: labels[i] };
+    });
+
+    const nums = vals.slice();
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const mn = Math.min.apply(null, nums), mx = Math.max.apply(null, nums);
+    const sd = Math.sqrt(nums.reduce((a, b) => a + (b - avg) * (b - avg), 0) / nums.length);
+    const warn = nums.filter(v => self.statusOf(sel0, v) === 'Perhatian' || self.statusOf(sel0, v) === 'Sedang').length;
+    const unsafe = nums.filter(v => self.statusOf(sel0, v) === 'Tidak Aman').length;
+
+    const recSafe = sel0.status === 'Baik';
+    const recMap = {
+      no2: ['Tingkatkan ventilasi ruangan.', 'Periksa potensi sumber emisi.'],
+      co2: ['Perbaiki sirkulasi udara.', 'Tingkatkan asupan udara segar.'],
+      tvoc: ['Identifikasi sumber emisi VOC.', 'Ganti material dengan alternatif emisi rendah.'],
+      light: ['Sesuaikan intensitas pencahayaan bila diperlukan.'],
+      noise: ['Kurangi kebisingan peralatan yang tidak perlu.']
+    };
+
+    const sel = {
+      name: sel0.name, fullName: sel0.fullName, unit: sel0.unit, value: sel0.value, icon: sel0.icon,
+      status: sel0.status, fg: selTone.fg, bg: selTone.bg, dot: selTone.dot, areaFill: selTone.area,
+      about: sel0.about, healthImpact: sel0.healthImpact,
+      recActions: recSafe ? ['Parameter berada dalam rentang aman terkonfigurasi.', 'Lanjutkan pemantauan rutin.'] : recMap[sel0.key]
+    };
+
+    const mkRange = (list, cur, setter) => list.map(l => ({
+      label: l,
+      bg: cur === l ? '#2E7D32' : '#f0f1ef',
+      fg: cur === l ? '#ffffff' : '#4d564f',
+      pick: () => setter(l)
+    }));
+
+    const predCfg = { k:6, label:'30 Mnt' };
+    const hv = [82, 79, 84, 81, 85, 83, 86, 84, 88, 85, 87, 86];
+    const fv = [86, 87, 88, 87, 89, 87, 88, 90, 89, 91, 90, 92, 91, 90, 92, 93, 91].slice(0, predCfg.k);
+    const predScore = fv[fv.length - 1];
+    const predStatus = predScore >= 80 ? 'Baik' : predScore >= 60 ? 'Perhatian' : predScore >= 40 ? 'Sedang' : 'Tidak Aman';
+    const predTone = this.tone(predStatus);
+    const hp = this.path(hv.concat(fv), 6, 320, 20, 122, false);
+    const histPath = hp.pts.slice(0, hv.length).map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const futPath = hp.pts.slice(hv.length - 1).map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+
+    const predData = [
+      { key:'no2', predicted:'17.8', dir:'Membaik' },
+      { key:'co2', predicted:'820', dir:'Naik ringan' },
+      { key:'tvoc', predicted:'132', dir:'Membaik' },
+      { key:'light', predicted:'315', dir:'Stabil' },
+      { key:'noise', predicted:'44', dir:'Naik ringan' }
+    ].map(p => {
+      const d = self.defs.find(x => x.key === p.key);
+      const c = p.dir === 'Membaik' ? { fg:'#1B5E20', bg:'#E8F5E9' } : p.dir === 'Stabil' ? { fg:'#4d564f', bg:'#f0f1ef' } : { fg:'#8A4B00', bg:'#FFF3E0' };
+      return { name: d.name, unit: d.unit, icon: d.icon, predicted: p.predicted, dirLabel: p.dir, fg: c.fg, bg: c.bg };
+    });
+
+    const aiRecommendation = 'Kualitas udara diprediksi tetap aman selama 30 menit ke depan. CO₂ menunjukkan tren naik ringan — pantau ventilasi ruangan.';
+
+    const histTimes = ['14:00', '13:00', '12:00', '11:00', '10:00'];
+    const histDates = ['24 Mei 2025', '24 Mei 2025', '24 Mei 2025', '24 Mei 2025', '24 Mei 2025'];
+    const histRaw = [
+      { no2:'18.4', co2:'780', tvoc:'145', light:'320', noise:'42', iaq:82, s:'Baik' },
+      { no2:'19.6', co2:'845', tvoc:'138', light:'335', noise:'45', iaq:76, s:'Baik' },
+      { no2:'24.1', co2:'1120', tvoc:'168', light:'310', noise:'51', iaq:65, s:'Perhatian' },
+      { no2:'31.8', co2:'1340', tvoc:'212', light:'290', noise:'58', iaq:58, s:'Sedang' },
+      { no2:'16.2', co2:'690', tvoc:'118', light:'240', noise:'38', iaq:72, s:'Baik' }
+    ];
+    const chipKey = { 'Semua':'no2', 'NO₂':'no2', 'CO₂':'co2', 'TVOC':'tvoc', 'Cahaya':'light', 'Kebisingan':'noise' }[st.histParam] || 'no2';
+    const histRows = histRaw.map((r, i) => {
+      const t = self.tone(r.s), open = st.histRow === i;
+      return {
+        dateLabel: histDates[i] + ', ' + histTimes[i], iaq: r.iaq, status: r.s, fg: t.fg, bg: t.bg, dot: t.dot, open: open,
+        detail: [ { label:'NO₂', value: r.no2 }, { label:'CO₂', value: r.co2 }, { label:'TVOC', value: r.tvoc },
+          { label:'CAHAYA', value: r.light }, { label:'BISING', value: r.noise }, { label:'SKOR', value: r.iaq } ],
+        toggle: () => self.setState({ histRow: open ? null : i })
+      };
+    });
+
+    const histCurve = [78, 82, 80, 75, 65, 58, 62, 70, 78, 85, 88, 92, 89];
+    const hc = this.path(histCurve, 0, 326, 14, 100, false);
+    const hcArea = this.path(histCurve, 0, 326, 14, 100, true);
+    const histXTicks = ['18 Mei','19 Mei','20 Mei','21 Mei','22 Mei','23 Mei','24 Mei'].map((l, k) => ({ x: (326 * (k / 6) - (k === 6 ? 26 : k === 0 ? 0 : 12)).toFixed(0), label: l }));
+
+    const chip = (label, active) => ({ label: label, bg: active ? '#2E7D32' : '#f0f1ef', fg: active ? '#ffffff' : '#4d564f' });
+
+    return {
+      isHome: screen === 'home', isDetail: screen === 'detail', isPrediction: screen === 'prediction',
+      isHistory: screen === 'history', isAbout: screen === 'about',
+      lastUpdate: '14:32:08',
+      iaq: iaq,
+      iaqLabel: iaq >= 80 ? 'AMAN' : iaq >= 60 ? 'SEDANG' : 'TIDAK AMAN',
+      gaugeDash: (C * iaq / 100).toFixed(1) + ' ' + C.toFixed(1),
+      predDash: (C2 * predScore / 100).toFixed(1) + ' ' + C2.toFixed(1),
+      predScore: predScore, predScoreColor: predTone.dot, predStatusLabel: predStatus === 'Baik' ? 'AMAN' : predStatus.toUpperCase(),
+      predLegend: [
+        { label:'Baik', range:'80-100', color:'#4CAF50' },
+        { label:'Perhatian', range:'60-79', color:'#FFB74D' },
+        { label:'Sedang', range:'40-59', color:'#FF8F00' },
+        { label:'Tidak Aman', range:'0-39', color:'#E53935' }
+      ],
+      params: params,
+      sel: sel,
+      detailPath: chart.d,
+      detailArea: area.d,
+      detailDots: detailDots,
+      yTicks: yTicks,
+      xTicks: xTicks,
+      band: { y: Math.min(bandTop, bandBot).toFixed(1), h: Math.max(2, Math.abs(bandBot - bandTop)).toFixed(1) },
+      stats: [
+        { label:'RATA-RATA', value: self.fmt(avg, sel0.dec), color: ink },
+        { label:'MINIMUM', value: self.fmt(mn, sel0.dec), color: ink },
+        { label:'MAKSIMUM', value: self.fmt(mx, sel0.dec), color: ink },
+        { label:'STD. DEVIASI', value: self.fmt(sd, 1), color: ink },
+        { label:'PERINGATAN', value: warn, color: warn ? '#8A4B00' : ink },
+        { label:'TIDAK AMAN', value: unsafe, color: unsafe ? '#B71C1C' : ink }
+      ],
+      detailRanges: mkRange(['1 Jam', '6 Jam', '12 Jam', '24 Jam', '7 Hari', 'Kustom'], st.detailRange, v => self.setState({ detailRange: v })),
+      predictions: predData,
+      histPath: histPath, futPath: futPath,
+      aiRecommendation: aiRecommendation,
+      histAreaPath: hcArea.d, histLinePath: hc.d, histXTicks: histXTicks,
+      histRows: histRows,
+      histParams: ['Semua', 'NO₂', 'CO₂', 'TVOC', 'Cahaya', 'Kebisingan'].map(l => Object.assign(chip(l, st.histParam === l), { pick: () => self.setState({ histParam: l }) })),
+      histSummary: [
+        { label:'RATA-RATA', value:'78', color: '#2E7D32' },
+        { label:'MAKSIMUM', value:'92', color: '#2E7D32' },
+        { label:'MINIMUM', value:'48', color: '#FF8F00' },
+        { label:'DATA', value:'168', color: ink }
+      ],
+      mainRecText: recSafe ? 'Kualitas udara saat ini baik. Pertahankan ventilasi rutin untuk kondisi optimal.' : 'TVOC sedikit di atas rentang aman. Tingkatkan ventilasi dan pantau secara rutin.',
+      aboutRows: [
+        { icon:'M9 3h6l2 4h2a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1h2Z', title:'Proyek', body:'UF IAQ – Sistem Prediksi Kualitas Udara Dalam Ruang' },
+        { icon:'M4 4h16v16H4Z M9 9h6v6H9Z M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2', title:'Teknologi', body:'IoT · Deep Learning · Prediksi AI' },
+        { icon:'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z M2 21c0-3 1.85-5.36 5.08-6', title:'Fokus', body:'Ruang Pemulihan Pasien · Lingkungan Emisi Rendah' },
+        { icon:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21c0-4 3.6-7 8-7s8 3 8 7', title:'Pengembang', body:'Universitas Fort De Kock, Tim Teknik Komputer' },
+        { icon:'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9M12 8v5M12 16h.01', title:'Versi', body:'1.0.0' }
+      ],
+      nav: [
+        { key:'home', label:'Beranda', icon:'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5' },
+        { key:'prediction', label:'Prediksi', icon:'M22 12h-4l-3 9L9 3l-3 9H2' },
+        { key:'history', label:'Riwayat', icon:'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9M12 7v5l3 2' },
+        { key:'about', label:'Tentang', icon:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21c0-4 3.6-7 8-7s8 3 8 7' }
+      ].map(n => {
+        const active = screen === n.key || (screen === 'detail' && n.key === 'home');
+        return { label: n.label, icon: n.icon, bg: active ? '#E8F5E9' : 'transparent', fg: active ? green : '#98A2A0', go: () => self.setState({ screen: n.key, histRow: null }) };
+      }),
+      goHome: () => self.setState({ screen: 'home' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
