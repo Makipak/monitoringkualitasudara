@@ -69,3 +69,27 @@ export function evaluateThresholds(reading, thresholds) {
 
   return alerts;
 }
+
+// Reconstructs { direction, recommendation } for one already-stored
+// `alerts` row (schema.md 3.5) - that table only persists
+// device_id/parameter/value/threshold_id, not direction/recommendation
+// (those were only ever computed transiently above), so historical
+// display (mobile Notifikasi screen, routes/rooms.js GET .../notifications)
+// recomputes them the same way, just from one known value/threshold pair
+// instead of scanning a fresh reading. `threshold` may be null (the
+// thresholds row was deleted since, or the alert predates thresholds
+// existing) - falls back to a direction-less generic recommendation.
+export function describeAlert(parameter, value, threshold) {
+  let direction = null;
+  if (threshold) {
+    if (threshold.max_value !== null && value > threshold.max_value) direction = "high";
+    else if (threshold.min_value !== null && value < threshold.min_value) direction = "low";
+  }
+
+  return {
+    direction,
+    recommendation:
+      RECOMMENDATIONS[parameter]?.[direction] ??
+      "Nilai di luar batas normal, periksa kondisi ruangan.",
+  };
+}

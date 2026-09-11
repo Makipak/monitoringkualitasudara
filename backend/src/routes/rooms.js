@@ -8,10 +8,16 @@ import {
   getLatestReading,
   getHistory,
   getDailyAggregate,
+  getReadingsForDay,
   getThresholds,
   getLatestPrediction,
+  getAlertHistory,
 } from "../services/db.js";
-import { evaluateThresholds } from "../services/threshold.js";
+import { evaluateThresholds, describeAlert } from "../services/threshold.js";
+import { buildXlsxBuffer, buildPdfBuffer } from "../services/export.js";
+
+const NOTIFICATIONS_DEFAULT_LIMIT = 50;
+const NOTIFICATIONS_MAX_LIMIT = 200;
 
 const router = Router();
 
@@ -54,17 +60,51 @@ router.get("/:deviceId/history", async (req, res, next) => {
   }
 });
 
+const EXPORT_FORMATS = ["xlsx", "pdf"];
+
 router.get("/:deviceId/export", async (req, res, next) => {
   try {
     const device = await loadDeviceOr404(req, res);
     if (!device) return;
 
-    const { date } = req.query;
+    const { date, format } = req.query;
     if (!date) {
       return res.status(400).json({ error: 'query param "date" (YYYY-MM-DD) is required' });
     }
-    const aggregate = await getDailyAggregate(device.id, date);
-    res.json(aggregate ?? { day: date, message: "no readings for this date" });
+    if (format !== undefined && !EXPORT_FORMATS.includes(format)) {
+      return res
+        .status(400)
+        .json({ error: `query param "format" must be one of: ${EXPORT_FORMATS.join(", ")}` });
+    }
+
+    // No `format` given: keep the original plain-JSON aggregate response
+    // (still used as a lightweight preview / for anything that doesn't
+    // need an actual file yet).
+    if (!format) {
+      const aggregate = await getDailyAggregate(device.id, date);
+      return res.json(aggregate ?? { day: date, message: "no readings for this date" });
+    }
+
+    const [readings, thresholds] = await Promise.all([
+      getReadingsForDay(device.id, date),
+      getThresholds(),
+    ]);
+    const filenameBase = `${device.device_id}-${date}`;
+
+    if (format === "xlsx") {
+      const xlsx = await buildXlsxBuffer({ device, date, readings, thresholds });
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.xlsx"`);
+      return res.send(xlsx);
+    }
+
+    const pdf = await buildPdfBuffer({ device, date, readings, thresholds });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.pdf"`);
+    res.send(pdf);
   } catch (err) {
     next(err);
   }
@@ -88,7 +128,18 @@ router.get("/:deviceId/status", async (req, res, next) => {
       status[parameter] = outOfRangeParams.has(parameter) ? "not_normal" : "normal";
     }
 
-    res.json({ time: reading.time, status, alerts: outOfRange });
+    // Real device connectivity (devices.status/last_seen_at, kept current
+    // by touchDeviceOnline()/markStaleDevicesOffline() in services/db.js +
+    // index.js's sweep) - separate from "does the app's WebSocket reach
+    // the backend" (mobile's useSensorData.ts `connection` state). Without
+    // this, the mobile app has no way to tell a live reading apart from a
+    // stale one served by a device that's actually been offline for days.
+    res.json({
+      time: reading.time,
+      status,
+      alerts: outOfRange,
+      device: { online: device.status === "online", lastSeenAt: device.last_seen_at },
+    });
   } catch (err) {
     next(err);
   }
@@ -116,6 +167,46 @@ router.get("/:deviceId/prediction", async (req, res, next) => {
       probabilities: prediction.probabilities,
       model_version: prediction.model_version,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Alert history for the mobile Notifikasi screen - rule-based
+// per-parameter `alerts` rows. These no longer drive push notifications
+// themselves (see services/mqtt.js sendPredictionAlertNotification, which
+// pushes on the composite AI label entering Peringatan/Bahaya instead).
+// Newest first; `resolvedAt: null` means still out of range. Separate from
+// /status above (that one only reports the *current* per-parameter
+// normal/not_normal snapshot, not a browsable history).
+router.get("/:deviceId/notifications", async (req, res, next) => {
+  try {
+    const device = await loadDeviceOr404(req, res);
+    if (!device) return;
+
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, NOTIFICATIONS_MAX_LIMIT)
+      : NOTIFICATIONS_DEFAULT_LIMIT;
+
+    const rows = await getAlertHistory(device.id, limit);
+    const notifications = rows.map((row) => {
+      const threshold = row.threshold_id
+        ? { min_value: row.min_value, max_value: row.max_value }
+        : null;
+      const { direction, recommendation } = describeAlert(row.parameter, row.value, threshold);
+      return {
+        id: row.id,
+        parameter: row.parameter,
+        value: row.value,
+        direction,
+        recommendation,
+        triggeredAt: row.triggered_at,
+        resolvedAt: row.resolved_at,
+      };
+    });
+
+    res.json(notifications);
   } catch (err) {
     next(err);
   }

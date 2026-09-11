@@ -45,6 +45,10 @@ yarn-error.log
 # src/config/env.example.ts
 src/config/env.ts
 
+# Firebase project config for FCM push notifications (rule.md section 3) -
+# copy from android/app/google-services.json.example
+android/app/google-services.json
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the

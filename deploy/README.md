@@ -1,5 +1,14 @@
 # deploy/
 
+**Not the current plan.** The actual hosting turned out to be shared
+cPanel hosting (Terminal access, no root - not a dedicated VPS), where
+none of this applies: no `apt-get`, no `systemctl`, no `ufw`. See
+`deploy/cpanel-README.md` for the walkthrough that matches that
+environment. Kept below only in case a real root-access VPS is used
+later instead.
+
+---
+
 systemd unit files for running `backend/` and `ml-service/` as persistent
 services on the VPS (see project decision: VPS hosting, superseding an
 earlier "run locally" plan). Both services are colocated on one VPS;

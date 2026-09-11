@@ -10,6 +10,7 @@ import {
 
 import DashboardScreen from '../screens/DashboardScreen';
 import ParameterDetailScreen from '../screens/ParameterDetailScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import PredictionScreen from '../screens/PredictionScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AboutScreen from '../screens/AboutScreen';
@@ -33,6 +34,9 @@ export type HomeStackParamList = {
   // useSensorData subscription just to show one badge - it's a snapshot
   // from navigation time, not live-updated while this screen stays open.
   ParameterDetail: { parameter: ParameterKey; status?: 'normal' | 'not_normal' | 'unknown' };
+  // Alert history (backend GET /api/rooms/:deviceId/notifications) -
+  // opened from the Dashboard header's bell icon.
+  Notifications: undefined;
 };
 
 export type HomeStackScreenProps<RouteName extends keyof HomeStackParamList> =
@@ -55,6 +59,7 @@ function HomeStackNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="Dashboard" component={DashboardScreen} />
       <HomeStack.Screen name="ParameterDetail" component={ParameterDetailScreen} />
+      <HomeStack.Screen name="Notifications" component={NotificationsScreen} />
     </HomeStack.Navigator>
   );
 }

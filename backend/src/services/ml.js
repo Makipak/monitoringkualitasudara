@@ -3,7 +3,11 @@
 // being a single-responsibility, side-effect-free module. Orchestration
 // (fetching readings from the DB, persisting the result, broadcasting it,
 // logging) stays in services/mqtt.js, same split as threshold.js/mqtt.js.
-import { ML_SERVICE_URL, ML_PREDICTION_WINDOW_SIZE } from "../config.js";
+import {
+  ML_SERVICE_URL,
+  ML_PREDICTION_WINDOW_SIZE,
+  ML_SERVICE_SHARED_SECRET,
+} from "../config.js";
 
 // DB column -> ml-service feature name (ml-service/metadata.json
 // feature_cols). Only these three actually rename; the rest are 1:1.
@@ -53,9 +57,17 @@ export function buildWindowPayload(readings) {
 // responsible for catching this so an ml-service outage never breaks the
 // core sensor ingest pipeline.
 export async function requestPrediction(mappedReadings) {
+  const headers = { "Content-Type": "application/json" };
+  // See config.js ML_SERVICE_SHARED_SECRET - only set on shared hosting
+  // where ml-service ends up with a public URL; omitted entirely (rather
+  // than sent empty) for a true localhost-only deployment.
+  if (ML_SERVICE_SHARED_SECRET) {
+    headers["X-ML-Service-Token"] = ML_SERVICE_SHARED_SECRET;
+  }
+
   const response = await fetch(`${ML_SERVICE_URL}/predict`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ readings: mappedReadings }),
   });
 

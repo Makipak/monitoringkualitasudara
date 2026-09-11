@@ -2,11 +2,14 @@
 # trained composite air-quality status classifier (BiGRU, see README for
 # the confirmed architecture) for the "Prediksi" feature.
 #
-# Runs locally alongside backend/ on the same machine/VPS, and is only
-# ever called by backend/ over http://localhost:<port>/predict - never
-# reachable from the mobile app or the internet directly. Same
-# "sub-projects never talk directly" rule as the rest of the monorepo
-# (CLAUDE.md), just over localhost instead of MQTT/REST-over-internet.
+# Runs locally alongside backend/, and is only ever called by backend/'s
+# services/ml.js - never by the mobile app directly. Same "sub-projects
+# never talk directly" rule as the rest of the monorepo (CLAUDE.md). On a
+# raw VPS this is over plain http://localhost:<port>/predict with no
+# public exposure at all; on shared cPanel hosting (deploy/cpanel-
+# README.md) "Setup Python App" always assigns a public Application URL,
+# so ML_SERVICE_SHARED_SECRET (see above) stands in for that missing
+# network-level isolation there.
 #
 # This service has one job: turn a window of raw sensor readings into a
 # composite status label. It does not know about MQTT, the database, or
@@ -14,18 +17,34 @@
 # those stay entirely on the Node side.
 
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
 import joblib
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from keras.models import model_from_json
 from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent
 METADATA_PATH = BASE_DIR / "metadata.json"
+
+# Optional shared secret, checked against the `X-ML-Service-Token` header
+# (see backend/src/config.js ML_SERVICE_SHARED_SECRET for the matching
+# side). Unset by default - true on a raw VPS/systemd deployment where
+# this service binds to 127.0.0.1 and is unreachable regardless. Shared
+# cPanel hosting (deploy/cpanel-README.md) has no loopback-only option
+# for a "Setup Python App" - it always gets a public Application URL -
+# so set this env var there to keep /predict from being open to anyone
+# who finds that URL.
+ML_SERVICE_SHARED_SECRET = os.environ.get("ML_SERVICE_SHARED_SECRET")
+
+
+def verify_shared_secret(x_ml_service_token: Optional[str] = Header(default=None)):
+    if ML_SERVICE_SHARED_SECRET and x_ml_service_token != ML_SERVICE_SHARED_SECRET:
+        raise HTTPException(status_code=401, detail="invalid or missing X-ML-Service-Token")
 
 # Filenames carry the training run's timestamp - this model file and
 # this scaler file must always be from the SAME training run (the
@@ -143,7 +162,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/predict", response_model=PredictResponse)
+@app.post("/predict", response_model=PredictResponse, dependencies=[Depends(verify_shared_secret)])
 def predict(payload: PredictRequest):
     metadata = get_metadata()
     window = metadata["window"]

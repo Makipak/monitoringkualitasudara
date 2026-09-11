@@ -3,6 +3,12 @@
 
 // NO2 via MiCS-4514 (Grove Multichannel Gas Sensor v2 carrier board), I2C.
 //
+// Bus: shares the main I2C bus (Wire, config.h PIN_I2C_*) on the ESP32
+// DevKitC V4 target. On the ESP32-S3 target it gets its own dedicated bus
+// instead (Wire1, config.h PIN_MICS_SDA/PIN_MICS_SCL) — found necessary
+// during ESP32-S3 bring-up, see mics4514.cpp — selected automatically via
+// CONFIG_IDF_TARGET_ESP32S3, same pattern as config.h's pin map.
+//
 // IMPORTANT (found 2026-08-26 after an extended bring-up investigation):
 // this physical board speaks DFROBOT's DFRobot_MICS register protocol
 // (github.com/DFRobot/DFRobot_MICS), NOT Seeed's Multichannel_Gas_GMXXX

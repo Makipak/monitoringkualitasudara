@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DEFAULT_DEVICE_ID } from '../config/env';
-import { getHistory, type SensorReading } from '../services/api';
+import { getHistory, type ExportFormat, type SensorReading } from '../services/api';
+import { useExport } from '../hooks/useExport';
 import { PARAMETERS } from '../constants/parameters';
 import SectionHeader from '../components/SectionHeader';
 import RangeSelector from '../components/RangeSelector';
 import Chip from '../components/Chip';
 import TrendChart from '../components/TrendChart';
 import { colors, radius } from '../theme';
+
+const EXPORT_BUTTONS: { format: ExportFormat; label: string }[] = [
+  { format: 'xlsx', label: 'Unduh Excel' },
+  { format: 'pdf', label: 'Unduh PDF' },
+];
 
 // design/UF IAQ.dc.html's filter uses literal date/time text fields;
 // simplified here to preset lookback windows so this doesn't need a
@@ -23,6 +29,7 @@ export default function HistoryScreen() {
   const [paramFilter, setParamFilter] = useState('Semua');
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [loading, setLoading] = useState(true);
+  const { busy: exportBusy, error: exportError, exportReport } = useExport(DEFAULT_DEVICE_ID);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,10 +141,25 @@ export default function HistoryScreen() {
           )}
         </View>
 
-        <View style={styles.exportNote}>
-          <Text style={styles.exportNoteText}>
-            Export laporan (CSV/PDF) belum tersedia - format file masih terbuka (prd.md bagian 9).
-          </Text>
+        <View style={styles.section}>
+          <SectionHeader title="Export Laporan" />
+          <Text style={styles.exportHint}>Unduh laporan kualitas udara hari ini.</Text>
+          <View style={styles.exportRow}>
+            {EXPORT_BUTTONS.map(({ format, label }) => (
+              <Pressable
+                key={format}
+                onPress={() => exportReport(format)}
+                disabled={exportBusy !== null}
+                style={[styles.exportButton, exportBusy !== null && styles.exportButtonDisabled]}>
+                {exportBusy === format ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.exportButtonLabel}>{label}</Text>
+                )}
+              </Pressable>
+            ))}
+          </View>
+          {exportError && <Text style={styles.exportErrorText}>{exportError}</Text>}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -169,6 +191,18 @@ const styles = StyleSheet.create({
   tableCell: { flex: 1, fontSize: 11.5, fontWeight: '600', color: colors.ink },
   tableCellBold: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.ink },
   footerNote: { fontSize: 10, fontWeight: '600', color: colors.faintText, marginTop: 10 },
-  exportNote: { marginHorizontal: 18, marginTop: 4, marginBottom: 24, borderRadius: radius.md, padding: 12, backgroundColor: colors.surfaceMuted },
-  exportNoteText: { fontSize: 11, color: colors.mutedText },
+  exportHint: { fontSize: 11, color: colors.mutedText, marginTop: 10 },
+  exportRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  exportButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  exportButtonDisabled: { opacity: 0.6 },
+  exportButtonLabel: { fontSize: 12.5, fontWeight: '700', color: colors.white },
+  exportErrorText: { fontSize: 11, color: colors.redDark, marginTop: 10 },
 });

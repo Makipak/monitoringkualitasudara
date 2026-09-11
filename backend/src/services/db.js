@@ -27,7 +27,7 @@ pool.on("error", (err) => {
 
 export async function findDeviceByDeviceId(deviceId) {
   const { rows } = await pool.query(
-    "SELECT id, device_id, room_id, status FROM devices WHERE device_id = $1",
+    "SELECT id, device_id, room_id, status, last_seen_at FROM devices WHERE device_id = $1",
     [deviceId],
   );
   return rows[0] ?? null;
@@ -106,10 +106,29 @@ export async function getHistory(internalDeviceId, from, to) {
   return rows;
 }
 
+// Raw readings for one calendar day, same day-boundary semantics as
+// getDailyAggregate() below (date_trunc'd on `date`, so both agree on
+// exactly which rows count as "that day" regardless of session
+// timezone) - used by services/export.js to build the CSV/PDF export
+// (prd.md section 9, resolved: CSV = every raw reading that day, PDF =
+// readable summary + hourly tables, both derived from these same rows).
+export async function getReadingsForDay(internalDeviceId, date) {
+  const { rows } = await pool.query(
+    `SELECT * FROM sensor_readings
+     WHERE device_id = $1
+       AND time >= date_trunc('day', $2::timestamptz)
+       AND time < date_trunc('day', $2::timestamptz) + interval '1 day'
+     ORDER BY time ASC`,
+    [internalDeviceId, date],
+  );
+  return rows;
+}
+
 // Daily aggregate (schema.md section 4, "Agregasi harian ... untuk
-// export"). The actual export file format (CSV/PDF) is still an open PRD
-// question (prd.md section 9) - this returns the aggregate as JSON until
-// that's decided.
+// export") - single avg per parameter for the whole day. Kept as the
+// plain-JSON default response of GET .../export (no `format` query
+// param); services/export.js computes its own richer summary (avg/min/
+// max/status) from getReadingsForDay() instead of this.
 export async function getDailyAggregate(internalDeviceId, date) {
   const { rows } = await pool.query(
     `SELECT
@@ -160,6 +179,24 @@ export async function resolveAlert(alertId) {
   await pool.query("UPDATE alerts SET resolved_at = now() WHERE id = $1", [alertId]);
 }
 
+// Alert history for the mobile Notifikasi screen (routes/rooms.js
+// GET .../notifications) - newest first, joined with `thresholds` so
+// services/threshold.js's describeAlert() can recompute direction/
+// recommendation for display (alerts rows don't store those themselves).
+export async function getAlertHistory(internalDeviceId, limit) {
+  const { rows } = await pool.query(
+    `SELECT a.id, a.parameter, a.value, a.threshold_id, a.triggered_at, a.resolved_at,
+            t.min_value, t.max_value
+     FROM alerts a
+     LEFT JOIN thresholds t ON t.id = a.threshold_id
+     WHERE a.device_id = $1
+     ORDER BY a.triggered_at DESC
+     LIMIT $2`,
+    [internalDeviceId, limit],
+  );
+  return rows;
+}
+
 // Composite-status predictions from the BiGRU classifier (schema.md 3.6),
 // separate from the rule-based `alerts` above.
 export async function insertPrediction(internalDeviceId, prediction) {
@@ -184,4 +221,28 @@ export async function getLatestPrediction(internalDeviceId) {
     [internalDeviceId],
   );
   return rows[0] ?? null;
+}
+
+// FCM push notification tokens (schema.md 3.7 device_push_tokens),
+// deliberately not scoped to a device/room - one row per app install, not
+// per monitored room (v1 is single-device anyway, see prd.md section 3).
+export async function upsertPushToken(fcmToken, platform) {
+  await pool.query(
+    `INSERT INTO device_push_tokens (fcm_token, platform)
+     VALUES ($1, $2)
+     ON CONFLICT (fcm_token) DO UPDATE SET platform = EXCLUDED.platform`,
+    [fcmToken, platform],
+  );
+}
+
+export async function getAllPushTokens() {
+  const { rows } = await pool.query("SELECT fcm_token FROM device_push_tokens");
+  return rows.map((row) => row.fcm_token);
+}
+
+// Called both when the app explicitly unregisters (e.g. user disables
+// notifications) and when services/push.js reports a token FCM considers
+// permanently invalid.
+export async function deletePushToken(fcmToken) {
+  await pool.query("DELETE FROM device_push_tokens WHERE fcm_token = $1", [fcmToken]);
 }

@@ -20,9 +20,39 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 ## 2. Device Layer
 
 ### 2.1 Komponen
-- MCU: ESP32 DevKitC V4 WROOM-32D
-- Sensor: SDS011 (UART1, PM2.5/PM10), MH-Z19B (UART2, CO2), GY-SGP30 (I2C), MiCS-4514 (I2C), BH1750 (I2C), MAX9814 (ADC), GY-SHT31 (I2C, suhu ruangan)
+- MCU: ESP32 DevKitC V4 WROOM-32D (target board utama/default — lihat "Catatan varian board ESP32-S3" di bawah untuk target paralel kedua)
+- Sensor: SDS011 (UART1, PM2.5/PM10), Winsen MH-Z19C (UART2, CO2 — lihat catatan 2.1 di bawah untuk histori penggantian chip), GY-SGP30 (I2C), MiCS-4514 (I2C), BH1750 (I2C), MAX9814 (ADC), GY-SHT31 (I2C, suhu ruangan)
 - Display: **TFT SPI 4.0" driver ST7796, 480x320px** (`TFT_eSPI`) — menggantikan rencana Nextion (UART + software editor terpisah) maupun rencana awal ILI9341 2.8" (dianggap terlalu kecil oleh dosen pembimbing).
+
+**Catatan varian board ESP32-S3 (paralel, bukan pengganti):** selain target
+utama di atas, `firmware/platformio.ini` juga punya environment kedua,
+`esp32-s3-devkitc-1` (ESP32-S3 N16R8: 16MB flash/8MB PSRAM octal), yang
+dibangun paralel dari sumber Arduino IDE yang sudah teruji langsung di
+board fisiknya (awalnya `firmware/arduino_ide/UdaraS3/UdaraS3.ino`,
+sekarang sudah didekomposisi ke struktur `firmware/src/`/`include/` yang
+sama dipakai target utama — lihat `firmware/README.md` "Board targets").
+ESP32 DevKitC V4 + `TFT_eSPI` di atas **tetap default/utama**; target S3
+ini opt-in (`pio run -e esp32-s3-devkitc-1`). Perbedaan utamanya:
+- **Pin map** beda total (lihat `firmware/include/config.h`, dipilih
+  otomatis lewat macro `CONFIG_IDF_TARGET_ESP32S3` dari core
+  Arduino-ESP32/ESP-IDF, bukan flag manual).
+- **Library display** beda: `TFT_eSPI` (DevKitC V4) vs `GFX Library for
+  Arduino`/Arduino_GFX_Library (S3) — driver panel yang sama-sama dipakai
+  (`ST7796`, 480x320) tapi API-nya beda, jadi ada dua file backend
+  (`display_tftespi.cpp`/`display_gfx.cpp`) yang mengimplementasikan
+  interface `display.h` yang sama; hanya satu yang pernah dikompilasi per
+  environment (lihat `build_src_filter` di `platformio.ini`).
+- **MiCS-4514** dapat bus I2C terpisah (`Wire1`) khusus di target S3,
+  bukan berbagi bus utama seperti di target DevKitC V4 — ditemukan perlu
+  saat bring-up S3 (lihat `firmware/src/sensors/mics4514.cpp`).
+- Tampilan UI-nya juga diganti ke tema kartu "Smart Dispenser" (dipakai di
+  kedua target, lihat `firmware/src/display/dispenser_theme.h`),
+  menggantikan layout list-baris sebelumnya.
+
+Belum diverifikasi build sungguhan (`pio run`) terhadap environment S3 ini
+di sandbox tempat perubahan ini dibuat — lihat `firmware/README.md`
+"Known placeholders" untuk detail konfigurasi flash/PSRAM yang masih
+best-effort.
 
 ### 2.2 Tanggung Jawab
 - Membaca seluruh sensor pada interval tetap.
@@ -30,7 +60,7 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 - Mengevaluasi threshold lokal (rule sederhana) untuk menampilkan label "Normal"/"Tidak Normal" per parameter langsung di layar TFT — ini berjalan independen dari koneksi internet, supaya indikator visual tetap berfungsi walau device sedang offline dari broker.
 - Publish data ke topic MQTT saat koneksi tersedia.
 
-**Catatan indikator kondisi (bukan LED fisik):** rencana awal (BOM v1) memakai 10x LED merah 5mm sebagai indikator instan per parameter (satu LED per salah satu dari 7 parameter resmi, ditambah 3 cadangan yang belum ada peruntukannya). Diputuskan untuk tidak memakai LED sama sekali — indikator kondisi cukup lewat label "Normal"/"Tidak Normal" per parameter yang sudah tampil di layar TFT (`firmware/src/display/display.cpp`, dievaluasi terhadap `firmware/include/thresholds.h`, sumber logika yang sama yang dulu dipakai LED). Ini menyederhanakan wiring (GPIO 5/12/13/14/25/26/27 yang tadinya dialokasikan untuk LED jadi bebas) dan menghapus kebutuhan modul `led_alert.*` terpisah. `prd.md` FR-D3 sudah diperbarui mengikuti keputusan ini.
+**Catatan indikator kondisi (bukan LED fisik):** rencana awal (BOM v1) memakai 10x LED merah 5mm sebagai indikator instan per parameter (satu LED per salah satu dari 7 parameter resmi, ditambah 3 cadangan yang belum ada peruntukannya). Diputuskan untuk tidak memakai LED sama sekali — indikator kondisi cukup lewat kartu nilai berwarna per parameter yang sudah tampil di layar TFT (`firmware/src/display/` — `display_tftespi.cpp`/`display_gfx.cpp`, satu per target board, lihat "Catatan varian board ESP32-S3" di atas — dievaluasi terhadap `firmware/include/thresholds.h`, sumber logika yang sama yang dulu dipakai LED). Ini menyederhanakan wiring (GPIO 5/12/13/14/25/26/27 yang tadinya dialokasikan untuk LED jadi bebas di target DevKitC V4) dan menghapus kebutuhan modul `led_alert.*` terpisah. `prd.md` FR-D3 sudah diperbarui mengikuti keputusan ini.
 
 **Catatan pemilihan display (ST7796 4.0", bukan Nextion):**
 - **Alasan:** proyek ini memprioritaskan kesederhanaan alur kerja (satu bahasa/tool, langsung coding, tanpa software editor tambahan seperti Nextion Editor) dibanding kemudahan desain visual drag-and-drop.
@@ -42,13 +72,15 @@ Sistem terdiri dari 4 layer utama: **Device (ESP32)**, **Message Broker (HiveMQ 
 
 **Catatan suhu ruangan:** menggunakan sensor dedicated **GY-SHT31** (I2C, default address `0x44`, digabung ke bus I2C yang sama dengan SGP30/MiCS-4514/BH1750 tanpa konflik address). Nilai suhu dikirim ke MQTT, disimpan ke database, dan ditampilkan di layar TFT maupun mobile app — **namun statusnya tetap sebagai info pendukung, bukan parameter resmi ber-alert**: tidak dievaluasi terhadap threshold, tidak memicu label status/notifikasi, dan tidak dihitung dalam status normal/tidak normal ruangan. Jika ke depan suhu perlu naik status jadi parameter dengan alert penuh, update `prd.md` (tambah FR) dan `thresholds`/evaluasi alert di `schema.md`.
 
-**Catatan penggantian sensor CO2 (MH-Z19B, bukan SCD30):**
+**Catatan penggantian sensor CO2 (awalnya rencana MH-Z19B, bukan SCD30):**
 - **Alasan:** sama seperti SDS011 — SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai tenggat waktu proyek. MH-Z19B dipilih karena ready stock dan umum ditemukan di marketplace lokal.
 - **Interface:** berubah dari I2C (SCD30) menjadi **UART** (MH-Z19B). Dialokasikan ke **UART2** ESP32 — sebelumnya dialokasikan untuk Nextion (sudah tidak dipakai setelah keputusan pindah ke TFT SPI), sehingga tidak ada konflik alokasi UART. UART1 tetap untuk SDS011, UART0 tetap untuk programming/debug.
 - **Konsekuensi kehilangan output suhu/RH bawaan SCD30:** tidak berdampak, karena suhu ruangan sudah ditangani terpisah oleh GY-SHT31 (lihat catatan di atas), dan RH (kelembapan) belum menjadi parameter resmi di `prd.md`/`schema.md` — jika ke depan RH dibutuhkan sebagai parameter resmi, perlu sensor humidity terpisah atau memanfaatkan output RH dari GY-SHT31 yang juga menyediakan itu.
 - **Output:** CO2 dalam ppm, range umum 0-5000 ppm — sesuai kebutuhan monitoring ruangan.
 - **Library:** kandidat `MHZ19` (Arduino), cek status maintenance sesuai `rule.md` sebelum dipakai.
 - **Biaya:** perlu diupdate manual di `projek.xlsx` (BOM), termasuk penghapusan SCD30 dari daftar.
+- **Update 2026-08-27 — identitas chip fisik ternyata beda:** unit CO2 yang benar-benar terpasang di device adalah **Huiwen MWD1006** (modul NDIR, Suzhou Huiwen Nanotechnology, range 5000ppm), bukan Winsen MH-Z19B asli seperti rencana awal di atas — ditemukan setelah investigasi bug "CO2 selalu 0". Protokol UART-nya tetap kompatibel dengan command-set publik MH-Z19 (command baca 0x86, checksum sama, ABC on/off command 0x79 sama — dikonfirmasi lewat datasheet MWD1006), jadi library `MHZ19` di atas tetap dipakai apa adanya; yang berubah cuma nama vendor/model fisiknya.
+- **Update 2026-09-01 — unit MWD1006 rusak, diganti Winsen MH-Z19C asli:** unit MWD1006 di atas berhenti berfungsi, digantikan modul **Winsen MH-Z19C** asli (dibeli baru). Dikonfirmasi lewat datasheet resmi Winsen MH-Z19C (v1.0, 2020.02.04) bahwa framing UART, command baca konsentrasi 0x86 + algoritma checksum, dan command ABC on/off 0x79 sama persis byte-for-byte dengan yang sudah dikirim driver — jadi tidak ada perubahan logika protokol, hanya rename driver dari `mwd1006.{h,cpp}` kembali ke `mhz19c.{h,cpp}` agar nama file sesuai chip fisik. Preheat MH-Z19C per datasheet: 1 menit (T90 < 120s), lebih cepat dari spek MWD1006 (~2 menit). Lihat `firmware/README.md` "Known placeholders" (`mhz19c.cpp`) untuk detail lengkap — belum dikonfirmasi live di device asli, baru dikonfirmasi lewat datasheet.
 
 **Catatan penggantian sensor PM2.5/PM10 (SDS011, bukan PMS5003):**
 - **Alasan:** PMS5003 dan SCD30 di seller yang tersedia mengalami waktu pre-order (PO) yang lama, tidak sesuai dengan tenggat waktu proyek. SDS011 dipilih sebagai pengganti PM2.5/PM10 karena tersedia ready stock.
@@ -124,7 +156,7 @@ void publishSensorData(float pm25, float pm10, float no2, float co2, float tvoc,
 - Simpan data ke PostgreSQL (Supabase).
 - Evaluasi threshold (server-side, sebagai sumber kebenaran untuk histori/notifikasi — terpisah dari threshold instan di device). **Hanya diterapkan pada 7 parameter resmi** (pm25, pm10, no2, co2, tvoc, lux, noise_db); `temperature` disimpan dan ditampilkan tapi dikecualikan dari evaluasi ini.
 - Menghasilkan rekomendasi tindakan sederhana berbasis **rule-based** (bukan Machine Learning) saat ada parameter out-of-range — lihat bagian 4.2a. Ini solusi sementara sampai sistem rekomendasi ML (lihat `prd.md` - Open Questions) siap didiskusikan dan diimplementasikan bersama tim.
-- Trigger push notification saat ada parameter out-of-range.
+- Trigger push notification saat status komposit AI (bagian 4.2b) *memasuki* Peringatan/Bahaya — bukan lagi per parameter out-of-range (keputusan awal di bawah ini digantikan; alert per-parameter tetap dicatat/ditampilkan untuk histori dan Dashboard, hanya tidak lagi memicu push sendiri). Lihat `backend/src/services/mqtt.js` `sendPredictionAlertNotification()`.
 - Expose REST API (data terkini, histori, export harian).
 - Broadcast update real-time ke app yang sedang terbuka (WebSocket).
 
@@ -152,9 +184,11 @@ client.on("message", async (topic, payload) => {
   await insertSensorReading(reading);
 
   const alerts = evaluateThresholds(reading);
-  if (alerts.length > 0) {
-    // trigger push notification, lihat bagian 4.3
-  }
+  // alerts di sini TIDAK lagi memicu push notification sendiri - hanya
+  // dicatat/di-broadcast untuk histori & Dashboard. Push notification
+  // dipicu terpisah, dari langkah prediksi status komposit AI (bagian
+  // 4.2b) saat memasuki Peringatan/Bahaya - lihat contoh implementasi
+  // sesungguhnya di backend/src/services/mqtt.js.
 
   broadcastToClients(reading, alerts);
 });
@@ -175,7 +209,9 @@ Karakteristik pendekatan ini:
 
 ### 4.2b Composite Status Prediction (`ml-service/`, klasifikasi BiGRU)
 
-Terpisah dari 4.2a di atas (yang tetap berjalan apa adanya, tidak digantikan): tab "Prediksi" di app memakai model Deep Learning terlatih (BiGRU, `ml-service/`) yang sudah diwire ke backend. Model ini **hanya** menghasilkan satu label status komposit (Baik/Rawan/Peringatan/Bahaya) + probabilitas per kelas dari window 60 pembacaan sensor terakhir — bukan prediksi nilai per-parameter maupun tren masa depan, dan bukan pengganti evaluasi rule-based 4.2a untuk alert/notifikasi.
+Terpisah dari 4.2a di atas (yang tetap berjalan apa adanya untuk evaluasi/rekomendasi per-parameter, tidak digantikan): tab "Prediksi" di app memakai model Deep Learning terlatih (BiGRU, `ml-service/`) yang sudah diwire ke backend. Model ini **hanya** menghasilkan satu label status komposit (Baik/Rawan/Peringatan/Bahaya) + probabilitas per kelas dari window 60 pembacaan sensor terakhir — bukan prediksi nilai per-parameter maupun tren masa depan.
+
+**Push notification** (bagian 6.3) sekarang bersumber dari label komposit ini, bukan dari evaluasi rule-based 4.2a — keputusan yang menggantikan rancangan awal di bagian 4.1. Notifikasi terkirim sekali saat label *memasuki* Peringatan atau Bahaya (bukan setiap siklus prediksi selama masih di kedua label itu, dan bukan saat berpindah antara Peringatan<->Bahaya). Alert per-parameter dari 4.2a tetap dicatat ke tabel `alerts` dan tetap tampil di histori (`GET .../notifications`) serta Dashboard - hanya tidak lagi memicu push sendiri. Lihat `backend/src/services/mqtt.js` (`sendPredictionAlertNotification`).
 
 Alur: `backend/src/services/mqtt.js` mengambil 60 baris `sensor_readings` terakhir setelah menyimpan reading baru, memetakan nama kolom DB ke `feature_cols` model (`backend/src/services/ml.js`), lalu memanggil `POST /predict` di `ml-service` (localhost saja, tidak pernah diekspos publik). Hasilnya disimpan di tabel `predictions` (`schema.md` 3.6) dan di-broadcast lewat WebSocket (`{ type: "prediction", prediction }`).
 
@@ -187,7 +223,7 @@ Risiko nyata yang masih terbuka: satuan `no2` yang dipakai saat training model k
 |---|---|---|
 | GET | `/api/rooms/:deviceId/latest` | Nilai terkini seluruh parameter |
 | GET | `/api/rooms/:deviceId/history?from=&to=` | Data historis dengan rentang waktu |
-| GET | `/api/rooms/:deviceId/export?date=` | Export data harian |
+| GET | `/api/rooms/:deviceId/export?date=&format=` | Export data harian - JSON agregat (default), atau `format=xlsx`/`format=pdf` untuk file (lihat `backend/README.md`) |
 | GET | `/api/rooms/:deviceId/status` | Status normal/tidak per parameter |
 | GET | `/api/rooms/:deviceId/prediction` | Status komposit terbaru dari classifier BiGRU (4.2b); `{ available: false }` (bukan error) selama window 60 data belum lengkap |
 
@@ -268,8 +304,9 @@ src/
 
 ### 6.3 Push Notification
 
-- Kandidat: Firebase Cloud Messaging (FCM) — umum dipakai di RN, gratis, terintegrasi baik dengan backend Node.js via Firebase Admin SDK.
-- Alur: backend deteksi out-of-range → backend kirim ke FCM → FCM kirim ke device app.
+- Diimplementasikan: Firebase Cloud Messaging (FCM), via Firebase Admin SDK di backend (`backend/src/services/push.js`) + `@react-native-firebase/messaging` di app (`mobile/src/services/notifications.ts`). **Android only** untuk saat ini - iOS butuh Apple Developer Program (APNs key) + build macOS yang belum ada.
+- Alur (lihat bagian 4.2b): backend menghitung status komposit AI tiap siklus prediksi → saat label *memasuki* Peringatan/Bahaya (bukan tiap siklus, bukan saat berpindah Peringatan<->Bahaya) → backend kirim ke FCM → FCM kirim ke device app. **Bukan** lagi dari deteksi out-of-range per-parameter (rancangan awal ini digantikan atas keputusan pengguna) - evaluasi per-parameter (4.2a) tetap jalan untuk histori/Dashboard, hanya tidak lagi memicu push.
+- Token FCM disimpan di `device_push_tokens` (`schema.md` 3.7), didaftarkan lewat `POST /api/push-tokens`.
 
 ## 7. Security
 

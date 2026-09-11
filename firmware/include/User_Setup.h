@@ -42,4 +42,14 @@
 // SPI clock lower than native hardware SPI pins would allow — 27MHz is a
 // conservative starting point for ST7796 over remapped pins; raise if
 // stable on your actual wiring, lower if you see display glitches.
-#define SPI_FREQUENCY 27000000
+//
+// Dropped to 10MHz 2026-08-27: real hardware (ST7796 4.0" unit) showed
+// large blank/static-noise patches on screen (classic corrupted-GRAM
+// symptom from marginal SPI signal integrity), consistent with this
+// warning — over GPIO-matrix pins + likely breadboard jumper wiring, the
+// bigger/faster module apparently can't hold 27MHz reliably. Raise this
+// back up only after confirming a full, clean fillScreen() (solid black,
+// no noise/blank patches) at a given value; don't tune rotation/layout
+// against a glitchy signal, you can't tell what's a real orientation bug
+// vs. corruption until the signal itself is clean.
+#define SPI_FREQUENCY 10000000

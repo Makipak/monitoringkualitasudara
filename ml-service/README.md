@@ -3,11 +3,14 @@
 Python microservice wrapping the trained composite air-quality status
 classifier (BiGRU) used by the "Prediksi" feature.
 
-Runs locally alongside `backend/`, on the same VPS, called over
-`http://localhost:<port>/predict`. Never reachable from the mobile app
-or the internet directly - same "sub-projects never talk to each other
-directly" rule as the rest of the monorepo (`CLAUDE.md`), just over
-localhost instead of MQTT/REST-over-internet.
+Runs locally alongside `backend/`, called only by `backend/src/services/ml.js`
+- never by the mobile app directly, same "sub-projects never talk to
+each other directly" rule as the rest of the monorepo (`CLAUDE.md`). On
+a raw VPS this binds to `127.0.0.1` and is never reachable from the
+internet at all. On shared cPanel hosting there is no loopback-only
+option (see `deploy/cpanel-README.md`) - set `ML_SERVICE_SHARED_SECRET`
+there so `/predict` isn't open to anyone who finds the public
+Application URL; leave it unset for local dev / a raw VPS.
 
 ## Setup
 
@@ -19,6 +22,10 @@ pip install -r requirements.txt
 
 uvicorn app:app --reload --port 8001
 ```
+
+Deploying to shared cPanel hosting instead of a raw VPS ("Setup Python
+App") uses `passenger_wsgi.py` as the entry point instead of the
+`uvicorn` command above - see `deploy/cpanel-README.md`.
 
 `GET /health` returns `{"status": "ok"}`. `POST /predict` takes a window
 of readings and returns the predicted composite status:

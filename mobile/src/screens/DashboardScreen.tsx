@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DEFAULT_DEVICE_ID } from '../config/env';
@@ -17,19 +17,37 @@ type Props = HomeStackScreenProps<'Dashboard'>;
 
 const DEFAULT_RECOMMENDATION =
   'Kualitas udara saat ini baik. Pertahankan ventilasi rutin untuk kondisi optimal.';
+const OFFLINE_RECOMMENDATION =
+  'Perangkat sedang tidak terhubung - rekomendasi tidak tersedia sampai perangkat kembali online.';
+
+// IC chip / circuit-board glyph (chip body + die + 8 pins) - used for the
+// two "is the ESP32 connected" indicators below instead of a generic wifi
+// icon, since the app doesn't distinguish WiFi from MQTT/broker
+// reachability - this represents the physical device itself either way.
+const CIRCUIT_ICON_PATH =
+  'M4 4H20V20H4Z M9 9H15V15H9Z M9 4L9 2M15 4L15 2M9 20L9 22M15 20L15 22M4 9L2 9M4 15L2 15M20 9L22 9M20 15L22 15';
 
 // v1 scope is a single device/room (prd.md section 3) - matches
 // firmware/include/config.h and backend/sql/seed.sql ("room-01").
 export default function DashboardScreen({ navigation }: Props) {
   const { connection, reading, status, alerts, error, refresh } = useSensorData(DEFAULT_DEVICE_ID);
   const { prediction } = usePrediction(DEFAULT_DEVICE_ID);
-  const iaq = computeIaqScore(status?.status);
-  // Approximates "is the device itself online" from whether the backend is
-  // reachable and has ever delivered a reading - there is no dedicated
-  // device-connectivity field in the REST API yet (rooms.js /status only
-  // reports per-parameter threshold status, not the `devices.status`
-  // online/offline column from schema.md).
-  const deviceOnline = connection === 'online' && reading !== null;
+  // Real device connectivity (schema.md devices.status, via rooms.js
+  // /status - see api.ts RoomStatus.device). Deliberately NOT derived from
+  // `reading !== null`/`connection` - the backend happily keeps serving
+  // the device's last stored reading over REST/WebSocket for as long as
+  // it's been offline, so that combination used to read "Terhubung" (and
+  // show that stale reading's values) even after the ESP32 had been
+  // disconnected for days.
+  const deviceOnline = status?.device.online ?? false;
+  // Gates everything below that's evaluated FROM the latest reading - once
+  // the device goes offline, `reading`/`status.status`/`alerts` are all
+  // still whatever they were the moment it dropped, not "no data", so they
+  // must not be presented as current.
+  const liveReading = deviceOnline ? reading : null;
+  const liveParamStatus = deviceOnline ? status?.status : undefined;
+  const liveAlerts = deviceOnline ? alerts : [];
+  const iaq = computeIaqScore(liveParamStatus);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -37,8 +55,10 @@ export default function DashboardScreen({ navigation }: Props) {
         connection={connection}
         deviceOnline={deviceOnline}
         lastUpdate={reading?.time}
-        temperature={reading?.temperature ?? null}
-        humidity={reading?.humidity ?? null}
+        temperature={liveReading?.temperature ?? null}
+        humidity={liveReading?.humidity ?? null}
+        hasActiveAlerts={liveAlerts.length > 0}
+        onPressBell={() => navigation.navigate('Notifications')}
       />
       <ConnectionBanner connection={connection} error={error} />
 
@@ -53,9 +73,11 @@ export default function DashboardScreen({ navigation }: Props) {
               <Text style={styles.iaqStatusCaption}>STATUS SAAT INI</Text>
               <Text style={styles.iaqStatus}>{iaqLabel(iaq)}</Text>
               <Text style={styles.iaqDesc}>
-                {iaq === null
-                  ? 'Menunggu data sensor pertama dari device.'
-                  : 'Persentase parameter resmi yang saat ini berada dalam rentang normal.'}
+                {iaq !== null
+                  ? 'Persentase parameter resmi yang saat ini berada dalam rentang normal.'
+                  : reading === null
+                    ? 'Menunggu data sensor pertama dari device.'
+                    : 'Perangkat sedang tidak terhubung - status IAQ tidak tersedia.'}
               </Text>
               <PredictionPill prediction={prediction} />
             </View>
@@ -80,10 +102,10 @@ export default function DashboardScreen({ navigation }: Props) {
             <View key={def.key} style={styles.gridCell}>
               <ParameterRow
                 def={def}
-                value={reading?.[def.key]}
-                status={status?.status[def.key] ?? 'unknown'}
+                value={liveReading?.[def.key]}
+                status={liveParamStatus?.[def.key] ?? 'unknown'}
                 onPress={() =>
-                  navigation.navigate('ParameterDetail', { parameter: def.key, status: status?.status[def.key] ?? 'unknown' })
+                  navigation.navigate('ParameterDetail', { parameter: def.key, status: liveParamStatus?.[def.key] ?? 'unknown' })
                 }
               />
             </View>
@@ -97,13 +119,15 @@ export default function DashboardScreen({ navigation }: Props) {
             size={18}
             color={colors.green}
           />
-          <Text style={styles.recText}>{alerts[0]?.recommendation ?? DEFAULT_RECOMMENDATION}</Text>
+          <Text style={styles.recText}>
+            {liveAlerts[0]?.recommendation ?? (deviceOnline ? DEFAULT_RECOMMENDATION : OFFLINE_RECOMMENDATION)}
+          </Text>
         </View>
 
         <View style={styles.grid}>
           <View style={styles.gridCell}>
             <InfoTile
-              iconPath="M2 6.5a15 15 0 0 1 20 0M5.5 10.5a10 10 0 0 1 13 0M9 14.5a5 5 0 0 1 6 0M12 18h.01"
+              iconPath={CIRCUIT_ICON_PATH}
               title="Perangkat IoT"
               body={`${deviceOnline ? '1/1' : '0/1'} Terhubung`}
             />
@@ -112,7 +136,7 @@ export default function DashboardScreen({ navigation }: Props) {
             <InfoTile
               iconPath="M10.3 21a1.94 1.94 0 0 0 3.4 0M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"
               title="Peringatan Aktif"
-              body={alerts.length > 0 ? `${alerts.length} Parameter` : 'Tidak ada'}
+              body={liveAlerts.length > 0 ? `${liveAlerts.length} Parameter` : 'Tidak ada'}
             />
           </View>
         </View>
@@ -165,12 +189,16 @@ function Header({
   lastUpdate,
   temperature,
   humidity,
+  hasActiveAlerts,
+  onPressBell,
 }: {
   connection: ConnectionState;
   deviceOnline: boolean;
   lastUpdate?: string;
   temperature: number | null;
   humidity: number | null;
+  hasActiveAlerts: boolean;
+  onPressBell: () => void;
 }) {
   const tone =
     connection === 'checking'
@@ -183,17 +211,17 @@ function Header({
     <View style={styles.header}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>UF IAQ</Text>
+          <Text style={styles.title}>Falhora</Text>
           <Text style={styles.subtitle}>Sistem Pemantauan Kualitas Udara Dalam Ruang</Text>
         </View>
         <View style={styles.headerIcons}>
-          <View style={styles.bellBox}>
+          <Pressable style={styles.bellBox} onPress={onPressBell} hitSlop={8}>
             <Icon path="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" size={16} />
-            <View style={styles.bellDot} />
-          </View>
+            {hasActiveAlerts && <View style={styles.bellDot} />}
+          </Pressable>
           <View style={[styles.connBox, { backgroundColor: deviceOnline ? colors.greenLine : colors.surfaceMuted }]}>
             <Icon
-              path="M2 6.5a15 15 0 0 1 20 0M5.5 10.5a10 10 0 0 1 13 0M9 14.5a5 5 0 0 1 6 0M12 18h.01"
+              path={CIRCUIT_ICON_PATH}
               size={15}
               color={deviceOnline ? colors.white : colors.faintText}
               strokeWidth={2.4}
@@ -207,7 +235,15 @@ function Header({
           <Text style={[styles.statusText, { color: tone.label }]}>{tone.text}</Text>
         </View>
         <Text style={styles.updateText}>
-          {lastUpdate ? `Diperbarui ${new Date(lastUpdate).toLocaleTimeString('id-ID')}` : 'Belum ada data'}
+          {!lastUpdate
+            ? 'Belum ada data'
+            : deviceOnline
+              ? `Diperbarui ${new Date(lastUpdate).toLocaleTimeString('id-ID')}`
+              : // Offline could mean this reading is days old - a bare time
+                // (no date) would read as "just now". Spell out the date too,
+                // and label it "data terakhir" rather than "diperbarui" since
+                // nothing has actually been updated since.
+                `Data terakhir ${new Date(lastUpdate).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`}
         </Text>
       </View>
       {/* Suhu + kelembapan ruangan (GY-SHT31) - dipublikasikan/disimpan

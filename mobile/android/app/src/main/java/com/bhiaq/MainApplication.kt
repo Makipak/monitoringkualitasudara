@@ -1,4 +1,4 @@
-package com.udaraapp
+package com.bhiaq
 
 import android.app.Application
 import com.facebook.react.PackageList

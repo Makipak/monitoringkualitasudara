@@ -26,6 +26,20 @@ const LABEL_DESCRIPTION: Record<PredictionLabel, string> = {
   Bahaya: 'Kualitas udara diprediksi berada pada tingkat yang perlu perhatian segera.',
 };
 
+// Fixed recommendation text per composite label - not model output (the
+// BiGRU classifier only produces the label + probabilities). Same
+// rule-based-copy pattern as threshold.js's RECOMMENDATIONS table, just
+// keyed by composite status instead of per-parameter direction.
+const LABEL_RECOMMENDATION: Record<PredictionLabel, string> = {
+  Baik: 'Pertahankan ventilasi rutin dan jadwal pembersihan ruangan seperti biasa.',
+  Rawan:
+    'Tingkatkan sirkulasi udara segar dan pantau parameter yang berisiko lebih sering dari biasanya.',
+  Peringatan:
+    'Periksa sumber pencemar (partikel, gas, kebisingan) di ruangan dan tingkatkan ventilasi/filtrasi udara segera.',
+  Bahaya:
+    'Batasi aktivitas di ruangan, tingkatkan ventilasi secara maksimal, dan segera periksa seluruh sumber pencemar di sekitar ruangan.',
+};
+
 export default function PredictionScreen() {
   const { prediction, loading, error, refresh } = usePrediction(DEFAULT_DEVICE_ID);
 
@@ -106,6 +120,13 @@ export default function PredictionScreen() {
             </View>
 
             <View style={styles.section}>
+              <SectionHeader title="Rekomendasi Tindakan" />
+              <View style={[styles.recommendationCard, { borderColor: tone.dot }]}>
+                <Text style={styles.recommendationText}>{LABEL_RECOMMENDATION[prediction.label]}</Text>
+              </View>
+            </View>
+
+            <View style={styles.section}>
               <SectionHeader title="Probabilitas per Kelas" />
               <View style={styles.probList}>
                 {LABEL_ORDER.map(label => {
@@ -165,6 +186,14 @@ const styles = StyleSheet.create({
   scoreStatus: { fontSize: 24, fontWeight: '800', marginTop: 2 },
   scoreDesc: { fontSize: 11, lineHeight: 15, marginTop: 4, opacity: 0.85 },
   section: { padding: 18, paddingTop: 20 },
+  recommendationCard: {
+    marginTop: 14,
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
+    backgroundColor: colors.surface,
+    padding: 14,
+  },
+  recommendationText: { fontSize: 12.5, lineHeight: 18, color: colors.ink },
   probList: { marginTop: 14, gap: 14 },
   probRow: { gap: 6 },
   probHeaderRow: { flexDirection: 'row', justifyContent: 'space-between' },

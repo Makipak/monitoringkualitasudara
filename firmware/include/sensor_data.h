@@ -46,4 +46,30 @@ enum SensorIndex {
   SENSOR_NOISE = 6,
 };
 
+// Composite-status prediction (Baik/Rawan/Peringatan/Bahaya) from the
+// BiGRU classifier (ml-service/) — the model itself only ever runs
+// server-side (backend/src/services/ml.js calls ml-service/ over
+// localhost), never on the ESP32, so this device only ever *receives* the
+// already-computed label, published back by the backend over MQTT (see
+// network/mqtt_pub.cpp's subscribe side, topic
+// hospital/{DEVICE_ID}/prediction — the reverse direction of the
+// hospital/{DEVICE_ID}/sensors publish).
+//
+// `available` stays false — and display/ must not fabricate/guess a
+// label — until at least one prediction message has actually been
+// received. This matches the mobile app's own fail-safe convention
+// (mobile/src/hooks/usePrediction.ts): both sides only ever show a real
+// model output or an explicit "not available" state, never a placeholder
+// dressed up as a reading. In particular, while the CO2/lux/temperature/
+// humidity sensors are physically uninstalled (see backend/src/services/
+// ml.js buildWindowPayload()), the backend never has a full reading
+// window to predict from, so this device will simply never receive a
+// prediction message and stays in the "not available" state — expected,
+// not a bug.
+constexpr int PREDICTION_LABEL_MAX_LEN = 16;
+struct PredictionState {
+  bool available = false;
+  char label[PREDICTION_LABEL_MAX_LEN] = "";
+};
+
 #endif // SENSOR_DATA_H

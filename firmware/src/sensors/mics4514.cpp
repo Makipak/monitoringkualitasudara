@@ -17,25 +17,35 @@ constexpr uint8_t REG_OX_HIGH = 0x04;   // OX_HIGH,OX_LOW,RED_HIGH,RED_LOW,POWER
 constexpr uint8_t REG_POWER_MODE = 0x0a;
 constexpr uint8_t MODE_WAKE_UP = 0x01;
 
+// Bus selection — see mics4514.h. ESP32-S3 gets a dedicated Wire1 bus for
+// this sensor (config.h PIN_MICS_SDA/PIN_MICS_SCL, begin() called from
+// sensors.cpp's sensorsInit()); the ESP32 DevKitC V4 target shares the
+// single main Wire bus with SGP30/BH1750/SHT31, as before.
+#if CONFIG_IDF_TARGET_ESP32S3
+TwoWire &micsWire = Wire1;
+#else
+TwoWire &micsWire = Wire;
+#endif
+
 int readRegisters(uint8_t reg, uint8_t *data, uint8_t len) {
-  Wire.beginTransmission(MICS_I2C_ADDR);
-  Wire.write(reg);
-  if (Wire.endTransmission() != 0) {
+  micsWire.beginTransmission(MICS_I2C_ADDR);
+  micsWire.write(reg);
+  if (micsWire.endTransmission() != 0) {
     return -1; // write itself failed (NACK / bus error)
   }
-  Wire.requestFrom(static_cast<int>(MICS_I2C_ADDR), static_cast<int>(len));
+  micsWire.requestFrom(static_cast<int>(MICS_I2C_ADDR), static_cast<int>(len));
   int i = 0;
-  while (Wire.available() && i < len) {
-    data[i++] = Wire.read();
+  while (micsWire.available() && i < len) {
+    data[i++] = micsWire.read();
   }
   return i;
 }
 
 bool writeRegister(uint8_t reg, uint8_t value) {
-  Wire.beginTransmission(MICS_I2C_ADDR);
-  Wire.write(reg);
-  Wire.write(value);
-  return Wire.endTransmission() == 0;
+  micsWire.beginTransmission(MICS_I2C_ADDR);
+  micsWire.write(reg);
+  micsWire.write(value);
+  return micsWire.endTransmission() == 0;
 }
 
 // One burst read matching DFRobot's own getSensorData() - OX and POWER
@@ -95,8 +105,8 @@ constexpr float NO2_RANGE_MAX_PPM = 10.0f;
 } // namespace
 
 bool mics4514Init() {
-  Wire.beginTransmission(MICS_I2C_ADDR);
-  bool ok = (Wire.endTransmission() == 0);
+  micsWire.beginTransmission(MICS_I2C_ADDR);
+  bool ok = (micsWire.endTransmission() == 0);
   if (!writeRegister(REG_POWER_MODE, MODE_WAKE_UP)) {
     Serial.println("[NO2] init: wake-up write failed (I2C NACK/bus busy)");
   }

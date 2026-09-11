@@ -139,7 +139,7 @@ export default function ParameterDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, styles.tipsCard]}>
           <View style={styles.tipsHeaderRow}>
             <Icon
               path="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z M2 21c0-3 1.85-5.36 5.08-6"
@@ -223,6 +223,10 @@ const styles = StyleSheet.create({
   infoCardTextCol: { flex: 1, minWidth: 0 },
   infoCardTitle: { fontSize: 11.5, fontWeight: '700', color: colors.ink },
   infoCardBody: { fontSize: 11.5, color: colors.mutedText, marginTop: 3, lineHeight: 17 },
+  // Overrides infoCard's row direction: this card stacks a header row
+  // (icon + title) above the tips list, rather than laying an icon and a
+  // single text column side by side like the "Dampak Kesehatan" card does.
+  tipsCard: { flexDirection: 'column', alignItems: 'stretch' },
   tipsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tipsList: { marginTop: 9, gap: 7, paddingLeft: 27 },
   tipRow: { flexDirection: 'row', gap: 7, alignItems: 'flex-start' },

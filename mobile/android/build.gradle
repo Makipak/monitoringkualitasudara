@@ -15,6 +15,10 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // FCM push notifications (@react-native-firebase/*, see
+        // mobile/src/services/notifications.ts) - reads app/google-services.json
+        // (gitignored, copy from google-services.json.example).
+        classpath("com.google.gms:google-services:4.5.0")
     }
 }
 

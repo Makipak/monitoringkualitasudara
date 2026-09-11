@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
+#include <string.h>
 
 #include "../../include/config.h"
 #include "../../include/secrets.h"
@@ -15,10 +16,48 @@ unsigned long lastAttemptMs = 0;
 bool wasConnected = false; // edge-detect disconnected -> connected, same
                            // pattern as wifi_conn.cpp's wasConnected
 
-char topicBuffer[64];
+char sensorsTopicBuffer[64];
+char predictionTopicBuffer[64];
 
-void buildTopic() {
-  snprintf(topicBuffer, sizeof(topicBuffer), "hospital/%s/sensors", DEVICE_ID);
+PredictionState latestPrediction;
+
+void buildTopics() {
+  snprintf(sensorsTopicBuffer, sizeof(sensorsTopicBuffer), "hospital/%s/sensors", DEVICE_ID);
+  snprintf(predictionTopicBuffer, sizeof(predictionTopicBuffer), "hospital/%s/prediction", DEVICE_ID);
+}
+
+// PubSubClient callback for every message on a subscribed topic. Only one
+// subscription exists (predictionTopicBuffer), so no topic dispatch is
+// needed yet — if a second subscription is ever added, switch on `topic`
+// here instead of assuming.
+void mqttMessageCallback(char *topic, uint8_t *payload, unsigned int length) {
+  (void)topic;
+
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, payload, length);
+  if (err) {
+    Serial.print("[MQTT] Prediction payload parse failed: ");
+    Serial.println(err.c_str());
+    return;
+  }
+
+  // `label` is the only field this device actually renders (see
+  // display.cpp) — class_index/probabilities/model_version (also present
+  // in the backend's payload, see services/mqtt.js) aren't needed here.
+  const char *label = doc["label"] | "";
+  if (label[0] == '\0') {
+    // Malformed/empty payload — ignore rather than blank out an
+    // already-known-good prediction on screen.
+    Serial.println("[MQTT] Prediction payload missing/empty label, ignored");
+    return;
+  }
+
+  strncpy(latestPrediction.label, label, PREDICTION_LABEL_MAX_LEN - 1);
+  latestPrediction.label[PREDICTION_LABEL_MAX_LEN - 1] = '\0';
+  latestPrediction.available = true;
+
+  Serial.print("[MQTT] Prediction received: ");
+  Serial.println(latestPrediction.label);
 }
 } // namespace
 
@@ -33,7 +72,8 @@ void mqttInit() {
   tlsClient.setInsecure();
 
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  buildTopic();
+  mqttClient.setCallback(mqttMessageCallback);
+  buildTopics();
 }
 
 void mqttMaintain() {
@@ -45,7 +85,7 @@ void mqttMaintain() {
   if (mqttClient.connected()) {
     if (!wasConnected) {
       Serial.print("[MQTT] Connected to broker, topic: ");
-      Serial.println(topicBuffer);
+      Serial.println(sensorsTopicBuffer);
       wasConnected = true;
     }
     mqttClient.loop();
@@ -65,6 +105,20 @@ void mqttMaintain() {
     // -2 connect failed, 4 bad credentials, 5 not authorized.
     Serial.print("[MQTT] Connect failed, state()=");
     Serial.println(mqttClient.state());
+    return;
+  }
+
+  // Re-subscribe on every fresh connect — PubSubClient uses a clean
+  // session, so a broker-side reconnect (WiFi blip, broker restart, etc.)
+  // silently drops the previous subscription. The backend publishes the
+  // prediction topic retained, so this immediately delivers the last
+  // known label rather than leaving the display stale until the next
+  // full-window prediction runs.
+  if (mqttClient.subscribe(predictionTopicBuffer)) {
+    Serial.print("[MQTT] Subscribed to: ");
+    Serial.println(predictionTopicBuffer);
+  } else {
+    Serial.println("[MQTT] Subscribe to prediction topic failed");
   }
 }
 
@@ -98,7 +152,7 @@ bool mqttPublishReadings(const SensorReadings &readings) {
 
   char payload[256];
   size_t len = serializeJson(doc, payload, sizeof(payload));
-  bool ok = mqttClient.publish(topicBuffer, reinterpret_cast<uint8_t *>(payload),
+  bool ok = mqttClient.publish(sensorsTopicBuffer, reinterpret_cast<uint8_t *>(payload),
                                 len, false);
 
   Serial.print("[MQTT] Publish ");
@@ -107,3 +161,5 @@ bool mqttPublishReadings(const SensorReadings &readings) {
 
   return ok;
 }
+
+const PredictionState &mqttGetPrediction() { return latestPrediction; }

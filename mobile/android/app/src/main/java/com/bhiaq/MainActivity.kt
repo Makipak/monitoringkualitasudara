@@ -1,4 +1,4 @@
-package com.udaraapp
+package com.bhiaq
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

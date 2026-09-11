@@ -33,10 +33,14 @@ void loop() {
 
     sensorsRead(readings);
 
-    // Out-of-range parameters are surfaced via the on-screen Normal/Tidak
-    // Normal label (display.cpp) — no physical LED indicator (removed,
-    // see prd.md/architecture.md history; was firmware/src/display/led_alert.*).
-    displayShowReadings(readings, wifiIsConnected(), mqttIsConnected());
+    // Out-of-range parameters are surfaced via color-coded values
+    // (display.cpp) — no physical LED indicator (removed, see prd.md/
+    // architecture.md history; was firmware/src/display/led_alert.*).
+    // mqttGetPrediction() is just the latest cached value from the last
+    // MQTT message (see network/mqtt_pub.cpp) — this call never blocks
+    // on the network.
+    displayShowReadings(readings, wifiIsConnected(), mqttIsConnected(),
+                         mqttGetPrediction());
     // Publish on the same tick as the display refresh (see config.h
     // SENSOR_READ_INTERVAL_MS comment) so the app is never showing a
     // value older than what's on the device's own screen.

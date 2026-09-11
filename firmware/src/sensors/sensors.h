@@ -3,9 +3,11 @@
 
 #include "../../include/sensor_data.h"
 
-// Initializes I2C bus + all 6 official-parameter sensor drivers (SDS011,
-// MH-Z19B, SGP30, MiCS-4514, BH1750, MAX9814) plus GY-SHT31 (room temp,
-// published/stored but not threshold-evaluated). Call once from setup().
+// Initializes the I2C bus (+ a second, dedicated I2C bus for MiCS-4514 on
+// the ESP32-S3 target only, see config.h) and all 6 official-parameter
+// sensor drivers (SDS011, MH-Z19C, SGP30, MiCS-4514, BH1750, MAX9814) plus
+// GY-SHT31 (room temp, published/stored but not threshold-evaluated).
+// Call once from setup().
 void sensorsInit();
 
 // Reads whatever is ready from each sensor into `readings`, updating

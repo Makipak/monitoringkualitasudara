@@ -1,9 +1,11 @@
-# UF IAQ (mobile)
+# Falhora (mobile)
 
 React Native (bare CLI, TypeScript) app for the Udara hospital air quality
 monitoring system - see `../architecture.md` section 6 for the full
-design. Display name is "UF IAQ" (see `../CLAUDE.md` Project status);
-native identifiers (`com.udaraapp`, npm package `UdaraApp`) are unchanged.
+design. Display name is "Falhora" - Faletehan Hospital Indoor Air Quality
+(see `../CLAUDE.md` Project status); Android/iOS bundle identifier is
+`com.bhiaq`. The underlying RN project/module name (`UdaraApp` - npm
+`name`, Xcode `PRODUCT_NAME`, `ios/UdaraApp` folder) is unchanged.
 
 - Navigation: React Navigation, bottom tabs (Beranda/Prediksi/Riwayat/Tentang)
   with a nested native-stack inside Beranda for the parameter detail screen -
@@ -36,6 +38,57 @@ cd ios && bundle install && bundle exec pod install && cd ..
 
 - **Android**: bisa dikembangkan di Linux, macOS, maupun Windows. Pastikan Android SDK/Android Studio & Java sudah terpasang (lihat [set up your environment](https://reactnative.dev/docs/set-up-your-environment) untuk distro/OS masing-masing). Di Linux, device fisik lewat USB umumnya butuh [udev rules](https://developer.android.com/studio/run/device#setting-up) supaya terbaca oleh `adb`.
 - **iOS**: hanya bisa dibangun/dijalankan di **macOS** (butuh Xcode + CocoaPods) — tidak bisa dari Linux atau Windows.
+
+## Push notifications
+
+FCM push notification (`src/services/notifications.ts`, architecture.md
+6.3) - **Android only** for now; iOS additionally needs an Apple Developer
+Program membership (for an APNs key) and a macOS build, neither of which
+exist yet.
+
+```sh
+cp android/app/google-services.json.example android/app/google-services.json
+# replace with the real file: Firebase Console -> Project Settings ->
+# General -> Your apps -> Android app (package com.bhiaq)
+```
+
+`google-services.json` is gitignored - never commit the real file. Without
+it, `pio`-style native Android builds will fail at the
+`com.google.gms.google-services` Gradle plugin step (`android/app/build.gradle`)
+with a "File google-services.json is missing" error - copy the example
+file above (with a real Firebase project's values) before running
+`npm run android` for the first time.
+
+On first launch the app requests the `POST_NOTIFICATIONS` runtime
+permission (Android 13+) and registers its FCM token with the backend via
+`POST /api/push-tokens` - see `backend/README.md`'s "Known placeholders"
+for the current server-side behavior (works once
+`FIREBASE_SERVICE_ACCOUNT_BASE64` is set there, fails safe/skips
+otherwise).
+
+## Export laporan
+
+`HistoryScreen.tsx`'s "Unduh Excel"/"Unduh PDF" buttons (`src/hooks/useExport.ts`)
+download today's report from `GET /api/rooms/:deviceId/export?format=xlsx|pdf`
+(`backend/README.md`) and hand it to the OS to open, via
+`react-native-blob-util` - a native module, so it needs the `pod install`
+step above on iOS (already covered by the "Setup pertama kali" commands,
+just re-run it after pulling this dependency for the first time; Android
+needs no extra setup). iOS is untested from development so far - no
+macOS build available yet, same caveat as push notifications above.
+
+`react-native-blob-util@0.24.10`'s Android download path has an upstream
+bug that makes every download fail with a generic "Download interrupted."
+error regardless of what the server sent - its progress-reporting
+`Source.read()` writes each chunk to disk but never into the Okio `sink`
+buffer the `Source` contract requires, so Okio always thinks the transfer
+stopped short. Patched via `patch-package` - `patches/react-native-blob-util+0.24.10.patch`,
+reapplied automatically by the `postinstall` script on every `npm install`.
+Don't delete `patches/` or add it to `.gitignore`; if this dependency is
+ever upgraded, re-diff the patch (`npx patch-package react-native-blob-util`
+after re-applying the same one-line fix, or drop the patch if upstream has
+fixed it by then).
+There is no date picker - it always exports the current calendar day.
 
 ---
 

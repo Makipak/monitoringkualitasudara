@@ -25,7 +25,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 - Backend menyimpan data historis ke TimescaleDB.
 - Mobile app (React Native) menampilkan dashboard, status per parameter, dan riwayat data.
 - Push notification saat ada parameter out-of-range.
-- Export data harian (format akan ditentukan, kandidat: CSV/PDF).
+- Export data harian - XLSX (Excel, raw + ringkasan) dan PDF (ringkasan tabel, tanpa grafik).
 
 ### Out of Scope (v1, kandidat pengembangan lanjutan)
 - Multi-device / multi-ruangan.
@@ -43,7 +43,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 ### 5.1 Perangkat IoT
 | ID | Requirement |
 |----|-------------|
-| FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (SDS011, MH-Z19B, SGP30, MiCS-4514, BH1750, MAX9814). |
+| FR-D1 | Perangkat membaca 7 parameter dari sensor terkait (SDS011, Winsen MH-Z19C [histori penggantian chip CO2, lihat `architecture.md` 2.1], SGP30, MiCS-4514, BH1750, MAX9814). |
 | FR-D2 | Perangkat menampilkan nilai seluruh parameter di layar OLED/TFT. |
 | FR-D3 | Perangkat menampilkan label "Normal"/"Tidak Normal" per parameter di layar ketika satu atau lebih dari 7 parameter resmi melebihi/di bawah batas normal (tidak ada LED fisik — lihat `architecture.md` 2.2 untuk riwayat keputusan). |
 | FR-D4 | Perangkat mengirim data sensor ke MQTT broker secara berkala melalui koneksi internet. |
@@ -56,7 +56,7 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 | FR-B2 | Backend menyimpan data sensor (termasuk suhu) ke PostgreSQL (Supabase) beserta timestamp. |
 | FR-B3 | Backend menyediakan REST API untuk data historis dan status terkini. |
 | FR-B4 | Backend mengirim update real-time ke mobile app (WebSocket). |
-| FR-B5 | Backend mengevaluasi 7 parameter resmi terhadap batas normal (rule-based) dan memicu notifikasi beserta rekomendasi tindakan sederhana jika menyimpang. Suhu disimpan dan diteruskan ke app tetapi dikecualikan dari evaluasi ini. |
+| FR-B5 | Backend mengevaluasi 7 parameter resmi terhadap batas normal (rule-based), mencatat alert (histori + Dashboard) beserta rekomendasi tindakan sederhana jika menyimpang. Suhu disimpan dan diteruskan ke app tetapi dikecualikan dari evaluasi ini. Alert ini **tidak lagi** yang memicu push notification (lihat FR-A4) - itu sekarang dari status komposit AI, lihat FR-A4a. |
 | FR-B6 | Backend menyediakan endpoint export data harian. |
 
 ### 5.3 Mobile App
@@ -65,7 +65,8 @@ Proyek ini merupakan tugas akhir yang membangun sistem monitoring kualitas udara
 | FR-A1 | Dashboard menampilkan 7 parameter resmi beserta status (normal/tidak normal), ditambah suhu ruangan sebagai info pendukung tanpa status normal/tidak normal. |
 | FR-A2 | Dashboard update secara real-time saat ada data baru. |
 | FR-A3 | Pengguna dapat melihat riwayat data per parameter (termasuk suhu). |
-| FR-A4 | Pengguna menerima push notification saat ada dari 7 parameter resmi yang out-of-range (suhu tidak memicu notifikasi). |
+| FR-A4 | Pengguna menerima push notification (FCM, Android - lihat `architecture.md` 6.3) saat status komposit AI (tab Prediksi) *memasuki* Peringatan atau Bahaya. |
+| FR-A4a | (Riwayat, digantikan) Rancangan awal FR-A4 adalah push per parameter resmi yang out-of-range - keputusan pengguna mengganti ini sepenuhnya dengan trigger dari status komposit AI di atas. Alert per-parameter (FR-B5) tetap dicatat & tampil di riwayat notifikasi in-app, hanya tidak lagi memicu push. |
 | FR-A5 | Pengguna dapat melakukan export data harian dari app. |
 
 ## 6. Non-Functional Requirements
@@ -97,7 +98,14 @@ Ambang batas normal tiap parameter akan mengacu pada standar resmi (Kemenkes/WHO
 - Peran/role pengguna di mobile app.
 - Standar baku mutu final per parameter.
 - Desain sistem **rekomendasi** ML (data training, letak inference, trigger) — **untuk v1, evaluasi dan rekomendasi (alert) tetap memakai rule-based sederhana** (lihat `architecture.md` bagian 4.2a); ini belum berubah. Desain rekomendasi ML tetap didiskusikan dengan tim untuk iterasi berikutnya, sebagai pelengkap atau pengganti rule-based ini. Terpisah dari ini: status komposit "Prediksi" (klasifikasi Baik/Rawan/Peringatan/Bahaya, bukan rekomendasi tindakan) sudah memakai model BiGRU terlatih sejak sesi ini, gated pada window 60 data sensor lengkap — lihat `architecture.md` 4.2b.
-- Format file export data harian.
+- ~~Format file export data harian~~ — selesai: dua format sekaligus,
+  XLSX (Excel asli, 3 sheet - Ringkasan, Rata-rata per Jam, Data Mentah)
+  dan PDF (tabel ringkasan + rata-rata per jam, sengaja tanpa grafik agar
+  mudah dibaca - keputusan pengguna). Awalnya CSV, diganti ke XLSX
+  (keputusan pengguna) supaya file-nya native Excel (tipe kolom benar,
+  banyak sheet), bukan teks datar. Lihat
+  `backend/src/services/export.js` dan `backend/README.md`. Tombol
+  unduh di mobile app ada di `HistoryScreen.tsx`.
 
 ## 10. Success Metrics
 
