@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_DEVICE_ID } from '../config/env';
 import { useSensorData, type ConnectionState } from '../hooks/useSensorData';
 import { usePrediction } from '../hooks/usePrediction';
-import { computeIaqScore, iaqLabel } from '../utils/iaqScore';
+import { iaqCategoryTone } from '../utils/iaqScore';
 import { PARAMETERS } from '../constants/parameters';
 import CircularGauge from '../components/CircularGauge';
 import ParameterRow from '../components/ParameterRow';
@@ -47,7 +47,10 @@ export default function DashboardScreen({ navigation }: Props) {
   const liveReading = deviceOnline ? reading : null;
   const liveParamStatus = deviceOnline ? status?.status : undefined;
   const liveAlerts = deviceOnline ? alerts : [];
-  const iaq = computeIaqScore(liveParamStatus);
+  // ISPU-style composite score (backend/src/services/iaqIndex.js) - null
+  // while offline/no reading yet, same as before.
+  const iaqIndex = deviceOnline ? status?.iaqIndex ?? null : null;
+  const iaqTone = statusTone[iaqIndex ? iaqCategoryTone(iaqIndex.category) : 'unknown'];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -68,16 +71,23 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={styles.iaqCard}>
           <Text style={styles.iaqLabel}>STATUS KUALITAS UDARA</Text>
           <View style={styles.iaqRow}>
-            <CircularGauge value={iaq} label="SKOR IAQ" progressColor={colors.green} trackColor="#D3DEBA" />
+            <CircularGauge
+              value={iaqIndex?.value ?? null}
+              label="INDEKS IAQ"
+              progressColor={iaqTone.dot}
+              trackColor="#D3DEBA"
+            />
             <View style={styles.iaqTextCol}>
               <Text style={styles.iaqStatusCaption}>STATUS SAAT INI</Text>
-              <Text style={styles.iaqStatus}>{iaqLabel(iaq)}</Text>
+              <Text style={[styles.iaqStatus, { color: iaqTone.fg }]}>
+                {iaqIndex?.category ?? '--'}
+              </Text>
               <Text style={styles.iaqDesc}>
-                {iaq !== null
-                  ? 'Persentase parameter resmi yang saat ini berada dalam rentang normal.'
+                {iaqIndex !== null
+                  ? 'Indeks komposit gaya ISPU dari 7 parameter resmi (skala 0-500+, makin tinggi makin buruk).'
                   : reading === null
                     ? 'Menunggu data sensor pertama dari device.'
-                    : 'Perangkat sedang tidak terhubung - status IAQ tidak tersedia.'}
+                    : 'Perangkat sedang tidak terhubung - indeks IAQ tidak tersedia.'}
               </Text>
               <PredictionPill prediction={prediction} />
             </View>

@@ -25,10 +25,22 @@ export type Alert = {
   recommendation: string;
 };
 
+// ISPU-style composite score (backend/src/services/iaqIndex.js) -
+// 0/50/100/200/300+ scale, higher is worse (Baik/Sedang/Tidak
+// Sehat/Sangat Tidak Sehat/Berbahaya), NOT a 0-100 "higher is better"
+// percentage. null only if the reading has no evaluable parameters at
+// all (shouldn't happen once a device is reporting anything).
+export type IaqIndex = {
+  value: number;
+  category: 'Baik' | 'Sedang' | 'Tidak Sehat' | 'Sangat Tidak Sehat' | 'Berbahaya';
+  breakdown: Array<{ parameter: string; value: number; subIndex: number; category: string }>;
+};
+
 export type RoomStatus = {
   time: string;
   status: Record<string, ParameterStatus>;
   alerts: Alert[];
+  iaqIndex: IaqIndex | null;
   // Real device connectivity (schema.md devices.status/last_seen_at) -
   // NOT the same as "is my WebSocket connected to the backend"
   // (useSensorData.ts's `connection` state). A device that has been

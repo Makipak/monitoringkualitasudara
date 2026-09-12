@@ -14,6 +14,7 @@ import {
   getAlertHistory,
 } from "../services/db.js";
 import { evaluateThresholds, describeAlert } from "../services/threshold.js";
+import { computeIaqIndex } from "../services/iaqIndex.js";
 import { buildXlsxBuffer, buildPdfBuffer } from "../services/export.js";
 
 const NOTIFICATIONS_DEFAULT_LIMIT = 50;
@@ -138,6 +139,13 @@ router.get("/:deviceId/status", async (req, res, next) => {
       time: reading.time,
       status,
       alerts: outOfRange,
+      // ISPU-style composite score for the Dashboard gauge
+      // (services/iaqIndex.js) - separate from `status`/`alerts` above,
+      // which stay driven by the `thresholds` table's simple normal/
+      // not_normal evaluation. null only if every official parameter is
+      // missing from this reading (shouldn't happen once a device is
+      // reporting at all).
+      iaqIndex: computeIaqIndex(reading),
       device: { online: device.status === "online", lastSeenAt: device.last_seen_at },
     });
   } catch (err) {
