@@ -3,7 +3,8 @@
 // under /api/rooms like rooms.js - a push token belongs to an app
 // install, not to a specific monitored room.
 import { Router } from "express";
-import { upsertPushToken, deletePushToken } from "../services/db.js";
+import { upsertPushToken, deletePushToken, getAllPushTokens } from "../services/db.js";
+import { sendAlertPush, sendAlertPushDebug } from "../services/push.js";
 
 const router = Router();
 
@@ -35,6 +36,28 @@ router.delete("/", async (req, res, next) => {
     }
     await deletePushToken(token);
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// TEMPORARY manual-test route, added 2026-09-12 to verify
+// FIREBASE_SERVICE_ACCOUNT_BASE64 works from inside the actual deployed
+// process (Passenger-managed) rather than a manually-run shell script -
+// the shared cPanel hosting's Terminal/SSH shell has a separate,
+// stricter resource limit that crashes plain `node script.js` runs
+// unrelated to whether the deployed app itself works (see deploy/
+// cpanel-README.md and this session's notes). Remove this route once
+// push notifications are confirmed working end-to-end - it is not part
+// of the product's actual feature set (rule.md: single responsibility).
+router.post("/test-send", async (req, res, next) => {
+  try {
+    const tokens = await getAllPushTokens();
+    const result = await sendAlertPushDebug(tokens, {
+      title: "Tes Notifikasi Falhora",
+      body: "Kalau ini muncul, FCM sudah terkonfigurasi dengan benar.",
+    });
+    res.json({ tokenCount: tokens.length, ...result });
   } catch (err) {
     next(err);
   }

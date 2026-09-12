@@ -73,3 +73,33 @@ function isUnregistered(error) {
     code === "messaging/invalid-registration-token"
   );
 }
+
+// TEMPORARY, added 2026-09-12 alongside routes/pushTokens.js's
+// /test-send debug route - remove both together once push notifications
+// are confirmed working. sendAlertPush() deliberately discards FCM's
+// per-token error detail (rule.md: callers of a pure module shouldn't
+// need to know FCM's error shape) - this exposes it, only for manual
+// diagnosis.
+export async function sendAlertPushDebug(tokens, { title, body }) {
+  const messaging = getMessagingClient();
+  if (!messaging) return { credentialLoaded: false };
+  if (tokens.length === 0) return { credentialLoaded: true, responses: [] };
+
+  const response = await messaging.sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    android: { priority: "high" },
+  });
+
+  return {
+    credentialLoaded: true,
+    successCount: response.successCount,
+    failureCount: response.failureCount,
+    responses: response.responses.map((r, i) => ({
+      tokenPrefix: tokens[i].slice(0, 12) + "...",
+      success: r.success,
+      errorCode: r.error?.code ?? null,
+      errorMessage: r.error?.message ?? null,
+    })),
+  };
+}
