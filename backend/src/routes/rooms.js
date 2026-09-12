@@ -12,12 +12,9 @@ import {
   getThresholds,
   getLatestPrediction,
   getAlertHistory,
-  getRecentReadings,
 } from "../services/db.js";
 import { evaluateThresholds, describeAlert } from "../services/threshold.js";
 import { buildXlsxBuffer, buildPdfBuffer } from "../services/export.js";
-import { buildWindowPayload, requestPrediction } from "../services/ml.js";
-import { ML_PREDICTION_WINDOW_SIZE } from "../config.js";
 
 const NOTIFICATIONS_DEFAULT_LIMIT = 50;
 const NOTIFICATIONS_MAX_LIMIT = 200;
@@ -170,47 +167,6 @@ router.get("/:deviceId/prediction", async (req, res, next) => {
       probabilities: prediction.probabilities,
       model_version: prediction.model_version,
     });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// TEMPORARY diagnostic route, added 2026-09-12 - mqtt.js's
-// runPredictionStep() only logs failures to console, which isn't
-// reachable on this shared cPanel host (see this session's notes on
-// LiteSpeed log access). Mirrors that function's steps read-only (no DB
-// insert/broadcast/push) so a failing call to ml-service surfaces its
-// real error in the HTTP response instead of a console line nobody can
-// read. Remove once the stale-prediction issue is diagnosed and fixed.
-router.get("/:deviceId/prediction/debug-run", async (req, res, next) => {
-  try {
-    const device = await loadDeviceOr404(req, res);
-    if (!device) return;
-
-    const readings = await getRecentReadings(device.id, ML_PREDICTION_WINDOW_SIZE);
-    const windowPayload = buildWindowPayload(readings);
-
-    if (!windowPayload) {
-      return res.json({
-        step: "buildWindowPayload",
-        result: "null (skipped)",
-        readingsFound: readings.length,
-        windowSize: ML_PREDICTION_WINDOW_SIZE,
-        lastReadingSample: readings[readings.length - 1] ?? null,
-      });
-    }
-
-    try {
-      const prediction = await requestPrediction(windowPayload);
-      res.json({ step: "requestPrediction", result: "success", prediction });
-    } catch (err) {
-      res.json({
-        step: "requestPrediction",
-        result: "error",
-        errorMessage: err.message,
-        errorStack: err.stack,
-      });
-    }
   } catch (err) {
     next(err);
   }
