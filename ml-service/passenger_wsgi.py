@@ -90,7 +90,10 @@ def application(environ, start_response):
         model = get_model()
         scaler = get_scaler()
         X = build_input(parsed.readings, metadata, scaler)
-        probs = model.predict(X, verbose=0)[0]
+        # See app.py's predict() for why this is model(X, training=False)
+        # rather than model.predict(X) - the latter crashes on this
+        # host's thread limit via tf.data's private threadpool.
+        probs = model(X, training=False).numpy()[0]
         class_index = int(probs.argmax())
         label_map = metadata["label_map"]
 

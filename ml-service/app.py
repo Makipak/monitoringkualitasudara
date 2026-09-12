@@ -178,7 +178,17 @@ def predict(payload: PredictRequest):
     scaler = get_scaler()
     X = build_input(payload.readings, metadata, scaler)
 
-    probs = model.predict(X, verbose=0)[0]
+    # model(X, training=False) rather than model.predict(X) - .predict()
+    # routes through Keras 3's tf.data-based input pipeline even for a
+    # single pre-built array, which spins up its own "private threadpool"
+    # separate from (and not covered by) TF_NUM_INTEROP_THREADS/
+    # TF_NUM_INTRAOP_THREADS/OMP_NUM_THREADS - fine on a normal machine,
+    # but on this shared cPanel host's tight process/thread limit it
+    # crashes with a pthread_create failure (confirmed 2026-09-12, see
+    # ml-service/README.md). Calling the model directly is a plain
+    # forward pass with no tf.data involved, numerically identical for
+    # one window.
+    probs = model(X, training=False).numpy()[0]
     class_index = int(np.argmax(probs))
 
     return PredictResponse(
