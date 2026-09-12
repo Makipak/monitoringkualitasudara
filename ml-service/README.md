@@ -39,7 +39,7 @@ of readings and returns the predicted composite status:
 // response
 { "label": "Rawan", "class_index": 1,
   "probabilities": { "Baik": 0.0002, "Rawan": 0.9998, "Peringatan": 0.0001, "Bahaya": 0.0 },
-  "model_version": "bigru_model_20260825_170626" }
+  "model_version": "bigru_model_20260911_164510" }
 ```
 
 ## Model architecture (confirmed by reconstructing + test-running it)
@@ -53,35 +53,47 @@ with a real forward pass through the reconstructed model - see `app.py`.
 **Files (both required, must be from the same training run - a
 scaler's fitted stats only make sense for the model trained on that same
 data):**
-- `bigru_model_20260825_170626.pkl` - saved as a plain dict
+- `bigru_model_20260911_164510.pkl` - saved as a plain dict
   `{"architecture": <Keras Sequential to_json() string>, "weights": [...]}`,
   **not** via `keras.models.save()`/`load_model()`. `app.py` reconstructs
   it with `model_from_json()` + `set_weights()`. If you retrain, either
   overwrite this exact filename or update `MODEL_PATH` in `app.py`.
-- `scaler_20260825_170626.pkl` - an `sklearn.preprocessing.StandardScaler`
+  Retrained 2026-09-11 (was `bigru_model_20260825_170626.pkl`); same
+  architecture, same `metadata.json` (feature_cols/window/label_map
+  unchanged) - only the learned weights and scaler stats changed.
+- `scaler_20260911_164510.pkl` - an `sklearn.preprocessing.StandardScaler`
   fitted on the 9 `feature_cols`, saved with `joblib.dump` (not plain
   `pickle.dump` - loading it with bare `pickle.load` fails with
-  `invalid load key`). Confirmed fitted with **scikit-learn 1.6.1
-  exactly** (via `InconsistentVersionWarning` when loaded with a newer
-  version) - `requirements.txt` pins to that.
+  `invalid load key`). Loads cleanly with **scikit-learn 1.6.1** (no
+  `InconsistentVersionWarning`) - `requirements.txt` stays pinned to
+  that.
 - `metadata.json` - `feature_cols` / `window` / `label_map`, the single
   source of truth for input order and output label names.
 
 ## Known placeholders / open questions (real, unresolved)
 
-- **NO2 scale looks suspicious - verify before trusting live predictions.**
-  The scaler's fitted `no2` mean is **33.4** (std 14.05). `architecture.md`
-  section 2.3's example MQTT payload has `"no2": 0.02` and `schema.md`
-  documents the unit as **ppm**. Those two numbers are ~1600x apart -
-  every other feature's mean is the same order of magnitude as its
-  `architecture.md` example value, only `no2` is wildly off. This
+- **NO2 scale mismatch - STILL UNRESOLVED after the 2026-09-11 retrain.**
+  The scaler's fitted `no2` mean is **33.4** (std 14.05) - confirmed
+  unchanged in the new `scaler_20260911_164510.pkl` (mean 33.40, std
+  14.05, essentially identical to the old one), meaning the retrain used
+  training data with `no2` in the same unit as before. `architecture.md`
+  section 2.3's example MQTT payload has `"no2": 0.02`, `schema.md`
+  documents the unit as **ppm**, and a real live reading pulled
+  2026-09-12 was `no2: 0.149666` - both ~200-1600x smaller than the
+  scaler's expected mean. Every other feature's mean is the same order
+  of magnitude as real sensor values; only `no2` is wildly off. This
   strongly suggests the training data's `no2` column was in a different
   unit than what the live MiCS-4514 sensor reports in ppm (maybe ppb, or
   a raw/uncalibrated sensor value) - feeding real ppm-scale readings
-  into this scaler as-is would likely produce badly wrong scaled input
-  and unreliable predictions for that feature. **Needs the training
-  script/data source checked** to confirm what unit `no2` actually was
-  during training, before wiring this to real sensor data.
+  into this scaler as-is produces a heavily out-of-distribution scaled
+  value for that one feature on every single prediction. **Needs the
+  training script/data source checked** to confirm what unit `no2` was
+  during training (and retraining with `no2` converted to real ppm, or
+  the live sensor's raw units matched to whatever training used) before
+  trusting live NO2-influenced predictions. See [[mics4514-no2-calibration]]
+  for the sensor-side calibration work already done (R0/formula fix,
+  confirmed live `no2` readings like 0.13-0.15 ppm are themselves
+  correct) - this is a separate, still-open training-data-side problem.
 - **`humidity` gap resolved.** `firmware/src/sensors/sht31.{h,cpp}` reads
   both temperature and humidity, `mqtt_pub.cpp` publishes both, and
   `schema.md` 3.3 / `backend/src/validate.js` / `backend/src/services/db.js`

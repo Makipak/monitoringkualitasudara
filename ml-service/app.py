@@ -52,8 +52,8 @@ def verify_shared_secret(x_ml_service_token: Optional[str] = Header(default=None
 # that specific model was trained on). If you retrain, either overwrite
 # both files keeping these exact names, or update both paths together -
 # never mix a model from one run with a scaler from another.
-MODEL_PATH = BASE_DIR / "bigru_model_20260825_170626.pkl"
-SCALER_PATH = BASE_DIR / "scaler_20260825_170626.pkl"
+MODEL_PATH = BASE_DIR / "bigru_model_20260911_164510.pkl"
+SCALER_PATH = BASE_DIR / "scaler_20260911_164510.pkl"
 
 _model = None
 _scaler = None
