@@ -12,10 +12,13 @@ import {
   getThresholds,
   getLatestPrediction,
   getAlertHistory,
+  getRecentReadings,
 } from "../services/db.js";
 import { evaluateThresholds, describeAlert } from "../services/threshold.js";
 import { computeIaqIndex } from "../services/iaqIndex.js";
 import { buildXlsxBuffer, buildPdfBuffer } from "../services/export.js";
+import { buildWindowPayload, requestPrediction } from "../services/ml.js";
+import { ML_PREDICTION_WINDOW_SIZE } from "../config.js";
 
 const NOTIFICATIONS_DEFAULT_LIMIT = 50;
 const NOTIFICATIONS_MAX_LIMIT = 200;
@@ -175,6 +178,46 @@ router.get("/:deviceId/prediction", async (req, res, next) => {
       probabilities: prediction.probabilities,
       model_version: prediction.model_version,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// TEMPORARY diagnostic route, re-added 2026-09-13 (same as the one
+// removed after the 232909/tf.data-threadpool debugging - see git
+// history) - predictions went stale again after the 171018 model swap
+// and mqtt.js's runPredictionStep() failures only go to a console we
+// can't read on this shared cPanel host. Mirrors that function
+// read-only (no DB insert/broadcast/push). Remove once diagnosed.
+router.get("/:deviceId/prediction/debug-run", async (req, res, next) => {
+  try {
+    const device = await loadDeviceOr404(req, res);
+    if (!device) return;
+
+    const readings = await getRecentReadings(device.id, ML_PREDICTION_WINDOW_SIZE);
+    const windowPayload = buildWindowPayload(readings);
+
+    if (!windowPayload) {
+      return res.json({
+        step: "buildWindowPayload",
+        result: "null (skipped)",
+        readingsFound: readings.length,
+        windowSize: ML_PREDICTION_WINDOW_SIZE,
+        lastReadingSample: readings[readings.length - 1] ?? null,
+      });
+    }
+
+    try {
+      const prediction = await requestPrediction(windowPayload);
+      res.json({ step: "requestPrediction", result: "success", prediction });
+    } catch (err) {
+      res.json({
+        step: "requestPrediction",
+        result: "error",
+        errorMessage: err.message,
+        errorStack: err.stack,
+      });
+    }
   } catch (err) {
     next(err);
   }
