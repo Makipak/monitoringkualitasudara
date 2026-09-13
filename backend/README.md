@@ -168,10 +168,20 @@ shape as the `/prediction` REST response above).
   tree and richer styling/formula support becomes worth it.
 - `services/ml.js` / `/api/rooms/:deviceId/prediction` require the CO2,
   lux, temperature, and humidity sensors to actually be reporting data -
-  as of this writing they're physically uninstalled on the device
-  (hardware repair), so every `sensor_readings` row is missing those
-  columns and the prediction step keeps skipping by design (fail-safe,
-  see `services/ml.js`). No code change needed once the sensors are
-  reinstalled - it starts producing predictions automatically. Also
-  requires `ml-service/` running and reachable at `ML_SERVICE_URL`
-  (defaults to `http://127.0.0.1:8001`, see `src/config.js`).
+  they were physically uninstalled on the device for a while (hardware
+  repair), which made every `sensor_readings` row miss those columns and
+  the prediction step keep skipping by design (fail-safe, see
+  `services/ml.js`); the sensors are reinstalled and reporting again
+  (reconfirmed 2026-09-13), no code change was needed. Also requires
+  `ml-service/` running and reachable at `ML_SERVICE_URL` (defaults to
+  `http://127.0.0.1:8001`, see `src/config.js`). Separately, the training
+  data's `no2` scale (a mismatch against the live sensor's ppm output)
+  was root-caused and fixed in `ml-service/Falhore.ipynb`, confirmed via
+  a 2026-09-13 retrain - but the deployed model (`bigru_model_20260913_171018.pkl`,
+  user's deliberate choice 2026-09-14) is a *different* same-day retrain
+  that still has the original bug; the fixed pair
+  (`bigru_model_20260913_232909.pkl`) exists in `ml-service/` unused,
+  pending the user switching to it. See `ml-service/README.md` "Known
+  placeholders" for the current deployed-vs-fixed status and a separate,
+  still-open issue (training data has zero "Baik" examples) before
+  trusting predictions fully either way.

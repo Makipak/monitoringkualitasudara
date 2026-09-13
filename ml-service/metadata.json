@@ -17,9 +17,9 @@
     "2": "Peringatan",
     "3": "Bahaya"
   },
-  "test_accuracy": 0.9880717992782593,
-  "macro_f1": 0.9883328112563231,
-  "weighted_f1": 0.9880706143367418,
+  "test_accuracy": 0.9612764716148376,
+  "macro_f1": 0.6855461629602625,
+  "weighted_f1": 0.9625466396835893,
   "n_train_blocks": 387,
   "n_val_blocks": 77,
   "n_test_blocks": 77
