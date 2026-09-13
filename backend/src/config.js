@@ -104,3 +104,23 @@ export const ML_PREDICTION_WINDOW_SIZE = 60;
 // once) the same way evaluateThresholds() does when thresholds aren't
 // configured yet.
 export const FIREBASE_SERVICE_ACCOUNT_BASE64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ?? null;
+
+// Local calendar-day boundary for the daily export report only
+// (services/db.js getReadingsForDay()/getDailyAggregate(), called from
+// routes/rooms.js .../export). mobile/src/hooks/useExport.ts sends a bare
+// "today" as a YYYY-MM-DD string - the device's local calendar day (WIB
+// for this hospital), with no UTC offset attached. Postgres has no
+// timezone configured anywhere else in this codebase (grep for
+// "TimeZone"/"Asia/Jakarta" turns up nothing outside this constant), so a
+// bare date cast to timestamptz used to fall back to the DB session's
+// default timezone (UTC on Supabase) instead of WIB - silently shifting
+// the day boundary by 7 hours. Concretely: during the first ~7 hours of
+// the WIB calendar day, every reading already inserted "today" was still
+// bucketed under UTC "yesterday", so exporting "today" came back with
+// zero rows (an XLSX with headers only / a PDF's explicit "no data" page)
+// even though the dashboard/history showed live data just fine - those
+// use precise ISO instants (useParameterHistory.ts's .toISOString()), not
+// a bare calendar date, so they never hit this. The two export queries
+// now interpret the date string against this zone explicitly (AT TIME
+// ZONE) instead of relying on the session default.
+export const REPORT_TIMEZONE = process.env.REPORT_TIMEZONE ?? "Asia/Jakarta";

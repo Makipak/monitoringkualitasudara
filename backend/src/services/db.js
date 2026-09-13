@@ -3,7 +3,7 @@
 // not because the queries are related to each other; business logic (rule
 // evaluation) lives in threshold.js instead.
 import pg from "pg";
-import { DATABASE_URL, DEVICE_OFFLINE_AFTER_MS } from "../config.js";
+import { DATABASE_URL, DEVICE_OFFLINE_AFTER_MS, REPORT_TIMEZONE } from "../config.js";
 
 export const pool = new pg.Pool({
   connectionString: DATABASE_URL,
@@ -107,19 +107,29 @@ export async function getHistory(internalDeviceId, from, to) {
 }
 
 // Raw readings for one calendar day, same day-boundary semantics as
-// getDailyAggregate() below (date_trunc'd on `date`, so both agree on
-// exactly which rows count as "that day" regardless of session
-// timezone) - used by services/export.js to build the CSV/PDF export
-// (prd.md section 9, resolved: CSV = every raw reading that day, PDF =
+// getDailyAggregate() below - both bound to the same [start, end) window
+// so they agree on exactly which rows count as "that day" - used by
+// services/export.js to build the XLSX/PDF export (prd.md section 9,
+// resolved: XLSX = full raw readings + summary/hourly sheets, PDF =
 // readable summary + hourly tables, both derived from these same rows).
+//
+// `date` is a bare YYYY-MM-DD with no UTC offset (mobile's
+// useExport.ts sends the device's local calendar day, WIB for this
+// hospital) - cast straight to timestamptz that used to silently pick up
+// the DB session's default timezone (UTC on Supabase, since nothing else
+// in this codebase sets one) instead of WIB, shifting the day boundary by
+// 7 hours and making "today"'s export come back empty for the first ~7
+// hours of the WIB day. `AT TIME ZONE $3` interprets the date explicitly
+// against REPORT_TIMEZONE regardless of the session's own setting - see
+// that constant's comment in config.js.
 export async function getReadingsForDay(internalDeviceId, date) {
   const { rows } = await pool.query(
     `SELECT * FROM sensor_readings
      WHERE device_id = $1
-       AND time >= date_trunc('day', $2::timestamptz)
-       AND time < date_trunc('day', $2::timestamptz) + interval '1 day'
+       AND time >= ($2::date)::timestamp AT TIME ZONE $3
+       AND time < ($2::date + 1)::timestamp AT TIME ZONE $3
      ORDER BY time ASC`,
-    [internalDeviceId, date],
+    [internalDeviceId, date, REPORT_TIMEZONE],
   );
   return rows;
 }
@@ -128,11 +138,14 @@ export async function getReadingsForDay(internalDeviceId, date) {
 // export") - single avg per parameter for the whole day. Kept as the
 // plain-JSON default response of GET .../export (no `format` query
 // param); services/export.js computes its own richer summary (avg/min/
-// max/status) from getReadingsForDay() instead of this.
+// max/status) from getReadingsForDay() instead of this. Same day-window
+// fix as getReadingsForDay() above; `day` echoes the requested date
+// directly rather than re-deriving it from `time` (which would reopen
+// the same session-timezone dependency just for this cosmetic field).
 export async function getDailyAggregate(internalDeviceId, date) {
   const { rows } = await pool.query(
     `SELECT
-       date_trunc('day', time) AS day,
+       $2::date AS day,
        avg(pm25) AS avg_pm25,
        avg(pm10) AS avg_pm10,
        avg(no2) AS avg_no2,
@@ -142,10 +155,10 @@ export async function getDailyAggregate(internalDeviceId, date) {
        avg(noise_db) AS avg_noise_db
      FROM sensor_readings
      WHERE device_id = $1
-       AND time >= date_trunc('day', $2::timestamptz)
-       AND time < date_trunc('day', $2::timestamptz) + interval '1 day'
-     GROUP BY day`,
-    [internalDeviceId, date],
+       AND time >= ($2::date)::timestamp AT TIME ZONE $3
+       AND time < ($2::date + 1)::timestamp AT TIME ZONE $3
+     GROUP BY 1`,
+    [internalDeviceId, date, REPORT_TIMEZONE],
   );
   return rows[0] ?? null;
 }

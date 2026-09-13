@@ -145,10 +145,19 @@ shape as the `/prediction` REST response above).
   user decision). Both share a Status column that reuses
   `services/threshold.js`'s `evaluateThresholds()`, so it fails safe the
   same way alerts do - "Ambang belum diatur" instead of a false "Normal"
-  for any parameter with no `thresholds` row yet. The hourly table
-  buckets by the export server's local time zone - there is no
-  hospital/device timezone configured anywhere in this project yet, so
-  this only reads correctly if the VPS's TZ matches WIB.
+  for any parameter with no `thresholds` row yet. Which calendar day
+  `?date=` selects is now pinned to `config.js`'s `REPORT_TIMEZONE`
+  (defaults to `Asia/Jakarta`, matching the mobile app's `todayIsoDate()`)
+  regardless of the DB session's own timezone - previously it silently
+  fell back to the Postgres session default (UTC on Supabase), which made
+  "today"'s export come back empty for the first ~7 hours of the WIB day
+  (readings taken then were still bucketed under UTC "yesterday"). The
+  hourly table's *row labels* within a selected day are a separate,
+  still-open gap: `bucketByHour()` groups by `new Date(reading.time).getHours()`,
+  which follows the export **server's** local time zone (Node's runtime
+  TZ), not `REPORT_TIMEZONE` - only cosmetic (an hour label off by
+  however many hours the VPS's TZ differs from WIB), but revisit if that
+  ever diverges.
 - `write-excel-file` was picked over the much more commonly recommended
   `exceljs` for the XLSX export above - `npm install exceljs` pulled in a
   deep transitive dependency tree with several npm-flagged-deprecated
