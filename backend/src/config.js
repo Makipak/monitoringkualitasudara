@@ -105,6 +105,25 @@ export const ML_PREDICTION_WINDOW_SIZE = 60;
 // configured yet.
 export const FIREBASE_SERVICE_ACCOUNT_BASE64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ?? null;
 
+// Workaround for shared cPanel hosting (deploy/cpanel-README.md) whose
+// firewall blocks most of Google's IP space via an automated abuse-
+// detection system that the host has confirmed (2026-09-13 support
+// ticket) it will not disable for a blanket allowlist - individual IPs
+// can be whitelisted, but oauth2.googleapis.com's anycast DNS returns a
+// different IP practically every call, so per-IP whitelisting never
+// reliably works (confirmed live: two different IPs, from two different
+// subnets, both timed out across two separate test calls). Google
+// publishes a small, STABLE IP range specifically for exactly this
+// "restricted egress" scenario - "Private Google Access"
+// (private.googleapis.com, 199.36.153.8/30) - once the host whitelists
+// that instead, set this to "199.36.153.8" and services/googleDnsPin.js
+// pins every *.googleapis.com DNS lookup to it (SNI/Host-based routing
+// on Google's end means the literal IP doesn't matter as long as it's
+// one Google actually recognizes). Leave unset (null) anywhere DNS
+// isn't artificially restricted - a raw VPS, local dev, or once/if this
+// host's firewall situation changes.
+export const GOOGLE_API_DNS_PIN_IP = process.env.GOOGLE_API_DNS_PIN_IP ?? null;
+
 // Local calendar-day boundary for the daily export report only
 // (services/db.js getReadingsForDay()/getDailyAggregate(), called from
 // routes/rooms.js .../export). mobile/src/hooks/useExport.ts sends a bare
